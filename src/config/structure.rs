@@ -25,10 +25,16 @@ impl Default for DConfig {
                 refresh_token: "".to_string(),
             },
             processes: ProcessesConfig {
-                processes: vec![ProcessesProcessConfig {
-                    display: "Visual Studio Code".to_string(),
-                    name: "code".to_string(),
-                }],
+                processes: vec![
+                    ProcessesProcessConfig {
+                        display: "Visual Studio Code".to_string(),
+                        name: "code".to_string(),
+                    },
+                    ProcessesProcessConfig {
+                        display: "Firefox".to_string(),
+                        name: "firefox".to_string(),
+                    },
+                ],
             },
         }
     }
