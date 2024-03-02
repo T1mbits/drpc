@@ -2,6 +2,7 @@ pub mod structure;
 
 use clap::Parser;
 
+use super::daemon::{kill_daemon, start_daemon};
 use structure::*;
 
 pub fn parse_command() -> () {
@@ -13,7 +14,7 @@ pub fn parse_command() -> () {
             CliDiscordSubcommands::Get => todo!(),
             CliDiscordSubcommands::Set(_arg) => todo!(),
         },
-        CliSubcommands::Kill => todo!(),
+        CliSubcommands::Kill => kill_daemon(),
         CliSubcommands::Processes(arg) => match arg.subcommands {
             CliProcessesSubcommands::Add(_arg) => todo!(),
             CliProcessesSubcommands::List => todo!(),
@@ -26,6 +27,6 @@ pub fn parse_command() -> () {
             CliSpotifySubcommands::Client(_arg) => todo!(),
             CliSpotifySubcommands::Remove => todo!(),
         },
-        CliSubcommands::Start => todo!(),
+        CliSubcommands::Start => start_daemon(),
     };
 }
