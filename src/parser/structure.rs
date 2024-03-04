@@ -23,6 +23,7 @@ pub enum CliSubcommands {
     Kill,
     #[command(about = PROCESSES_ABOUT)]
     Processes(CliProcesses),
+    Ping,
     #[command(about = REFRESH_ABOUT)]
     Refresh,
     #[command(about = SPOTIFY_ABOUT)]
@@ -47,20 +48,20 @@ pub enum CliDiscordSubcommands {
 
 #[derive(Debug, Args)]
 pub struct CliDiscordSet {
-    #[arg(short = 'c', long, required = false)]
-    pub client_id: u64,
-    #[arg(short = 'd', long, required = false)]
-    pub details: String,
-    #[arg(short = 'K', long, required = false)]
-    pub large_image_key: String,
-    #[arg(short = 'k', long, required = false)]
-    pub small_image_key: String,
-    #[arg(short = 'T', long, required = false)]
-    pub large_image_text: String,
-    #[arg(short = 't', long, required = false)]
-    pub small_image_text: String,
-    #[arg(short = 's', long, required = false)]
-    pub state: String,
+    #[arg(short = 'c', long)]
+    pub client_id: Option<u64>,
+    #[arg(short = 'd', long)]
+    pub details: Option<String>,
+    #[arg(short = 'K', long)]
+    pub large_image_key: Option<String>,
+    #[arg(short = 'k', long)]
+    pub small_image_key: Option<String>,
+    #[arg(short = 'T', long)]
+    pub large_image_text: Option<String>,
+    #[arg(short = 't', long)]
+    pub small_image_text: Option<String>,
+    #[arg(short = 's', long)]
+    pub state: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -79,8 +80,8 @@ pub enum CliProcessesSubcommands {
 
 #[derive(Debug, Args)]
 pub struct CliProcessesAdd {
-    #[arg(short = 'd', long, required = false)]
-    pub display: String,
+    #[arg(short = 'd', long)]
+    pub display: Option<String>,
     #[arg(short = 'n', long)]
     pub name: String,
 }
@@ -106,10 +107,10 @@ pub enum CliSpotifySubcommands {
 
 #[derive(Debug, Args)]
 pub struct CliSpotifyClient {
-    #[arg(short = 'd', long)]
-    pub display: String,
-    #[arg(short = 'n', long)]
-    pub name: String,
+    #[arg(short = 'i', long)]
+    pub id: Option<String>,
+    #[arg(short = 's', long)]
+    pub secret: Option<String>,
 }
 /*
 CLI
@@ -142,7 +143,8 @@ CLI
 |	|	|- --secret
 |	|- remove
 |
-|- start (daemon?)
-|- kill (daemon?)
+|- start
+|- kill
+|- ping
 |- refresh
 */
