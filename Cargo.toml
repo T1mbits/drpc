@@ -1,5 +1,5 @@
 [package]
-name = "drpc"
+name = "ddrpc"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,5 +14,4 @@ fork = "0.1.23"
 interprocess = "1.2.1"
 rspotify = "0.12.0"
 serde = "1.0.197"
-tokio = { version = "1.36.0", features = ["full"] }
 toml = "0.8.10"

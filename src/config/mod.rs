@@ -12,10 +12,10 @@ use structure::DConfig;
 fn generate_config_dir_path() -> String {
     match config_dir() {
         Some(config_dir) => match config_dir.to_str() {
-            None => "./drpc".to_owned(),
-            Some(config_dir) => config_dir.to_owned() + "/drpc",
+            None => "./ddrpc".to_owned(),
+            Some(config_dir) => config_dir.to_owned() + "/ddrpc",
         },
-        None => "./drpc".to_owned(),
+        None => "./ddrpc".to_owned(),
     }
 }
 
@@ -23,7 +23,7 @@ fn generate_config_dir_path() -> String {
 ///
 /// Uses `generate_config_dir_path()` and appends file location.
 fn generate_config_file_path() -> String {
-    generate_config_dir_path() + "/drpc.toml"
+    generate_config_dir_path() + "/ddrpc.toml"
 }
 
 pub fn initialize_config() -> DConfig {

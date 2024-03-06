@@ -1,4 +1,4 @@
-# Dynamic (Discord) Rich Presence Customizer
+# Dynamic Discord Rich Presence Customizer
 
 This is the 8th revival and hopefully the final iteration of this project.
 

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-const DRPC_ABOUT: &str = "Dynamic (Discord) Rich Presence Customizer";
+const DDRPC_ABOUT: &str = "Dynamic Discord Rich Presence Customizer";
 const DISCORD_ABOUT: &str = "Manage the connection and data of the Discord Rich Presence";
 const KILL_ABOUT: &str = "Kills the daemon process";
 const PROCESSES_ABOUT: &str = "Manage the processes that the program will detect";
@@ -9,7 +9,7 @@ const SPOTIFY_ABOUT: &str = "Manage the authorization of your Spotify account";
 const START_ABOUT: &str = "Start the daemon process";
 
 #[derive(Debug, Parser)]
-#[command(version, about = DRPC_ABOUT)]
+#[command(version, about = DDRPC_ABOUT)]
 pub struct Cli {
     #[command(subcommand)]
     pub subcommands: CliSubcommands,
