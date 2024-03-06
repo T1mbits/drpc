@@ -1,11 +1,12 @@
 pub mod config;
 pub mod daemon;
+pub mod logging;
 pub mod parser;
 
 // use discord_rpc_client::Client;
 
 // use config::{initialize_config, structure::DConfig, write_config};
-use parser::parse_command;
+use parser::cli::parse_command;
 
 fn main() {
     // let config: DConfig = initialize_config();
