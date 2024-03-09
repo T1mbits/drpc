@@ -17,6 +17,7 @@ pub fn ddrpc_log(data: &str) {
     }
 }
 
+#[allow(dead_code)]
 fn daemon_log(data: String) {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
@@ -33,6 +34,7 @@ fn daemon_log(data: String) {
     }
 }
 
+#[allow(dead_code)]
 fn client_log(data: String) {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
