@@ -1,10 +1,7 @@
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream, NameTypeSupport};
-use std::{
-    io::{self, prelude::*, BufReader},
-    process::Command,
-};
+use std::io::{self, prelude::*, BufReader};
 
-use super::super::logging::ddrpc_log;
+use crate::logging::ddrpc_log;
 
 /// Logs any socket connection errors.<br>
 /// Will return `None` if an error is encountered, otherwise it will return `Some(LocalSocketStream)`
@@ -44,33 +41,10 @@ pub fn output_socket_path() -> &'static str {
 /// If an `io:ErrorKind::AddrInUse` error is encountered, will attempt to kill any other ddrpc processes **which was pretty dumb as it kills itself**<br>
 /// ~and will try to connect again, panicking if another error is encountered.~ Will panic on any other error scenario.<br><br>
 /// definitely need to rewrite this
-pub fn create_listener(socket_name: &str) -> LocalSocketListener {
+pub fn create_listener(socket_name: &str) -> Result<LocalSocketListener, io::Error> {
     match LocalSocketListener::bind(socket_name) {
-        Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
-            ddrpc_log(&format!("Error while binding to socket: {error}"));
-            ddrpc_log("Killing any existing ddrpc process(es)");
-            match Command::new("pkill").arg("ddrpc").output() {
-                Err(error) => {
-                    ddrpc_log(&format!("Error while killing ddrpc process(es): {error}"));
-                    panic!()
-                }
-                Ok(_) => ddrpc_log("Successfully killed process(es)"),
-            };
-            match LocalSocketListener::bind(socket_name) {
-                Err(error) => {
-                    ddrpc_log(&format!(
-                        "Error while reattempting to bind to socket: {error}"
-                    ));
-                    panic!()
-                }
-                Ok(listener) => listener,
-            }
-        }
-        Err(error) => {
-            ddrpc_log(&format!("Error while binding to socket: {error}"));
-            panic!()
-        }
-        Ok(listener) => listener,
+        Err(error) => Err(error),
+        Ok(listener) => Ok(listener),
     }
 }
 
@@ -139,7 +113,7 @@ pub fn send(buffer: &[u8], socket_path: &str) -> Result<BufReader<LocalSocketStr
 pub fn receive(socket_stream: BufReader<LocalSocketStream>) -> Result<String, io::Error> {
     let mut buffer = String::new();
     let mut socket_stream = socket_stream;
-    match socket_stream.read_line(&mut buffer) {
+    match socket_stream.read_to_string(&mut buffer) {
         Err(error) => Err(error),
         Ok(_) => Ok(buffer),
     }
