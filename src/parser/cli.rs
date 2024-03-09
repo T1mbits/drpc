@@ -1,7 +1,9 @@
 use clap::Parser;
 
-use super::super::daemon::{kill_daemon, ping_daemon, start_daemon};
-use super::structure::*;
+use crate::{
+    daemon::{get_discord, kill_daemon, ping_daemon, start_daemon},
+    parser::structure::*,
+};
 
 pub fn parse_command() -> () {
     let args: Cli = Cli::parse();
@@ -9,7 +11,7 @@ pub fn parse_command() -> () {
         CliSubcommands::Discord(arg) => match arg.subcommands {
             CliDiscordSubcommands::Connect => todo!(),
             CliDiscordSubcommands::Disconnect => todo!(),
-            CliDiscordSubcommands::Get => todo!(),
+            CliDiscordSubcommands::Get => get_discord(),
             CliDiscordSubcommands::Set(arg) => {
                 if arg.client_id.is_some() {
                     todo!()
