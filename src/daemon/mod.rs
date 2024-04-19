@@ -1,3 +1,4 @@
+pub mod discord;
 pub mod socket;
 
 use fork::{daemon, Fork};
@@ -10,8 +11,10 @@ use std::{
 
 use crate::{
     config::structure::DConfig,
-    daemon::socket::*,
-    discord::{discord_thread, DiscordThreadCommands},
+    daemon::{
+        discord::{discord_thread, DiscordThreadCommands},
+        socket::*,
+    },
     logging::ddrpc_log,
     parser::ipc::ipc_parser,
 };
@@ -21,10 +24,10 @@ pub struct ChannelCommunications<'cc> {
     pub main: &'cc Receiver<Vec<u8>>,
 }
 
-pub fn start_daemon() {
-    let socket_input_name = input_socket_path();
+pub fn start_daemon(config: DConfig) {
+    let socket_name = socket_path();
 
-    let listener: LocalSocketListener = match create_listener(socket_input_name) {
+    let listener: LocalSocketListener = match create_listener(socket_name) {
         Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
             ddrpc_log(&format!("Socket in use: {error}"));
             eprintln!("Socket is already bound to another listener. Use `ddrpc ping` to check if another daemon is active.");
@@ -37,9 +40,9 @@ pub fn start_daemon() {
         }
         Ok(socket_listener) => socket_listener,
     };
-    println!("Created and bound socket listener to {socket_input_name}");
+    println!("Created and bound socket listener to {socket_name}");
     ddrpc_log(&format!(
-        "Created and bound socket listener to {socket_input_name}"
+        "Created and bound socket listener to {socket_name}"
     ));
 
     println!("Forking into daemon...");
@@ -48,7 +51,7 @@ pub fn start_daemon() {
         let (sender_main, receiver_main) = channel();
         ddrpc_log("Forked into daemon");
 
-        let discord_sender = match discord_thread(DConfig::default().discord, sender_main.clone()) {
+        let discord_sender = match discord_thread(config.discord, sender_main.clone()) {
             Err(error) => {
                 ddrpc_log(&format!("Error while creating Discord RPC thread: {error}"));
                 process::exit(1);
@@ -83,7 +86,7 @@ pub fn start_daemon() {
 }
 
 pub fn kill_daemon() {
-    match exchange(b"kill", input_socket_path()) {
+    match exchange(b"kill", socket_path()) {
         Err(error) => {
             eprintln!(
                 "An error occurred while trying to exchange messages over the socket: {}",
@@ -99,26 +102,7 @@ pub fn kill_daemon() {
 pub fn ping_daemon() {
     print!(
         "{}",
-        match exchange(b"ping", input_socket_path()) {
-            Err(error) => {
-                eprintln!(
-                    "An error occurred while trying to exchange messages over the socket: {}",
-                    error
-                );
-                if error.kind() == ErrorKind::ConnectionRefused {
-                    eprintln!("The daemon may not be active. Try using \"ddrpc start\" to start the daemon.");
-                }
-                process::exit(1);
-            }
-            Ok(buffer) => buffer,
-        }
-    );
-}
-
-pub fn get_discord() {
-    print!(
-        "{}",
-        match exchange(b"discord get", input_socket_path()) {
+        match exchange(b"ping", socket_path()) {
             Err(error) => {
                 eprintln!(
                     "An error occurred while trying to exchange messages over the socket: {}",
