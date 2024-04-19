@@ -1,11 +1,12 @@
-use crate::{config::structure::DiscordConfig, daemon::socket::*, discord::*, logging::ddrpc_log};
+use crate::{config::structure::DiscordConfig, discord::*, logging::ddrpc_log};
 
 use discord_rpc_client::Client;
 use std::{
-    io::{self, ErrorKind},
-    process,
+    io::{self}, // ErrorKind},
+    // process,
     sync::mpsc::*,
-    thread, time,
+    thread,
+    time,
 };
 
 pub enum DiscordThreadCommands {
@@ -25,7 +26,7 @@ pub fn discord_thread(
         .name("discord_rpc".to_owned())
         .spawn(move || {
             let mut config: DiscordConfig = config;
-            let sender_main: Sender<Vec<u8>> = sender_main;
+            let _sender_main: Sender<Vec<u8>> = sender_main;
             let mut client: Option<Client> = None;
             loop {
                 let discord_channel: DiscordThreadCommands =

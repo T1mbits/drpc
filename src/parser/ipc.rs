@@ -1,5 +1,5 @@
 use interprocess::local_socket::LocalSocketStream;
-use std::{io::BufReader, process, sync::mpsc::RecvTimeoutError, thread, time};
+use std::{io::BufReader, process, thread, time};
 
 use crate::{
     daemon::{discord::DiscordThreadCommands, socket::write, ChannelCommunications},
