@@ -6,7 +6,7 @@ use toml::{from_str, to_string};
 
 use crate::config::structure::DConfig;
 
-fn dir_path() -> String {
+pub fn dir_path() -> String {
     match config_dir() {
         Some(config_dir) => match config_dir.to_str() {
             None => "./ddrpc/".to_owned(),
