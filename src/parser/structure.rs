@@ -44,6 +44,7 @@ pub enum CliDiscordSubcommands {
     Disconnect,
     Get,
     Set(CliDiscordSet),
+    Update,
 }
 
 #[derive(Debug, Args)]
@@ -52,14 +53,14 @@ pub struct CliDiscordSet {
     pub client_id: Option<u64>,
     #[arg(short = 'd', long)]
     pub details: Option<String>,
-    #[arg(short = 'K', long)]
-    pub large_image_key: Option<String>,
-    #[arg(short = 'k', long)]
-    pub small_image_key: Option<String>,
+    #[arg(short = 'I', long)]
+    pub large_image: Option<String>,
+    #[arg(short = 'i', long)]
+    pub small_image: Option<String>,
     #[arg(short = 'T', long)]
-    pub large_image_text: Option<String>,
+    pub large_text: Option<String>,
     #[arg(short = 't', long)]
-    pub small_image_text: Option<String>,
+    pub small_text: Option<String>,
     #[arg(short = 's', long)]
     pub state: Option<String>,
 }

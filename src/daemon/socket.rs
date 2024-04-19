@@ -17,13 +17,14 @@ pub fn handle_connection_error(
     }
 }
 
-/// Returns a string slice for the domain socket input location.<br>
-/// A `todo!` macro is present because I have no idea what that branch does.
-pub fn input_socket_path() -> &'static str {
+/// Returns a string slice for the domain socket location.<br>
+/// A `todo!` macro is present because I have no idea what those branches do.
+pub fn socket_path() -> &'static str {
     use NameTypeSupport::*;
     match NameTypeSupport::query() {
+        Both => "@/Timbits/ddrpc.sock\n",
+        OnlyNamespaced => todo!(),
         OnlyPaths => todo!(),
-        OnlyNamespaced | Both => "@/Timbits/ddrpc_in.sock",
     }
 }
 
@@ -32,15 +33,13 @@ pub fn input_socket_path() -> &'static str {
 pub fn output_socket_path() -> &'static str {
     use NameTypeSupport::*;
     match NameTypeSupport::query() {
+        Both => "@/Timbits/ddrpc_out.sock",
+        OnlyNamespaced => todo!(),
         OnlyPaths => todo!(),
-        OnlyNamespaced | Both => "@/Timbits/ddrpc_out.sock",
     }
 }
 
-/// Creates a `LocalSocketListener` while logging any errors during creation.<br><br>
-/// If an `io:ErrorKind::AddrInUse` error is encountered, will attempt to kill any other ddrpc processes **which was pretty dumb as it kills itself**<br>
-/// ~and will try to connect again, panicking if another error is encountered.~ Will panic on any other error scenario.<br><br>
-/// definitely need to rewrite this
+/// Creates a `LocalSocketListener`
 pub fn create_listener(socket_name: &str) -> Result<LocalSocketListener, io::Error> {
     match LocalSocketListener::bind(socket_name) {
         Err(error) => Err(error),

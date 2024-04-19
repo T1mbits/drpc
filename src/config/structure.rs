@@ -14,10 +14,12 @@ impl Default for DConfig {
                 client_id: 1133837522074607749,
                 state: "".to_string(),
                 details: "".to_string(),
-                large_image_key: "".to_string(),
-                large_image_text: "".to_string(),
-                small_image_key: "".to_string(),
-                small_image_text: "".to_string(),
+                assets: DiscordConfigAssets {
+                    large_image: "".to_string(),
+                    large_text: "".to_string(),
+                    small_image: "".to_string(),
+                    small_text: "".to_string(),
+                },
             },
             spotify: SpotifyConfig {
                 client_id: "".to_string(),
@@ -25,7 +27,7 @@ impl Default for DConfig {
                 refresh_token: "".to_string(),
             },
             processes: ProcessesConfig {
-                processes: vec![
+                process: vec![
                     ProcessesProcessConfig {
                         display: "Visual Studio Code".to_string(),
                         name: "code".to_string(),
@@ -45,10 +47,24 @@ pub struct DiscordConfig {
     pub client_id: u64,
     pub state: String,
     pub details: String,
-    pub large_image_key: String,
-    pub large_image_text: String,
-    pub small_image_key: String,
-    pub small_image_text: String,
+    pub assets: DiscordConfigAssets,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiscordConfigAssets {
+    pub large_image: String,
+    pub large_text: String,
+    pub small_image: String,
+    pub small_text: String,
+}
+
+impl DiscordConfigAssets {
+    pub fn is_empty(&self) -> bool {
+        self.large_image.is_empty()
+            && self.large_text.is_empty()
+            && self.small_image.is_empty()
+            && self.small_text.is_empty()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,7 +76,7 @@ pub struct SpotifyConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessesConfig {
-    pub processes: Vec<ProcessesProcessConfig>,
+    pub process: Vec<ProcessesProcessConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
