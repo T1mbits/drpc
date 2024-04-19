@@ -1,39 +1,33 @@
-use clap::Parser;
-
 use crate::{
-    daemon::{get_discord, kill_daemon, ping_daemon, start_daemon},
+    config::{structure::DConfig, write_config},
+    daemon::{
+        kill_daemon, ping_daemon,
+        socket::{exchange, socket_path},
+        start_daemon,
+    },
+    discord::{get, set},
     parser::structure::*,
 };
+use clap::Parser;
 
-pub fn parse_command() -> () {
+pub fn parse_command(config: DConfig) -> () {
     let args: Cli = Cli::parse();
     match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
-            CliDiscordSubcommands::Connect => todo!(),
-            CliDiscordSubcommands::Disconnect => todo!(),
-            CliDiscordSubcommands::Get => get_discord(),
+            CliDiscordSubcommands::Connect => {
+                exchange(b"discord connect", &socket_path()).unwrap();
+            }
+            CliDiscordSubcommands::Disconnect => {
+                exchange(b"discord disconnect", &socket_path()).unwrap();
+            }
+            CliDiscordSubcommands::Get => {
+                get(&config.discord);
+            }
             CliDiscordSubcommands::Set(arg) => {
-                if arg.client_id.is_some() {
-                    todo!()
-                };
-                if arg.details.is_some() {
-                    todo!()
-                };
-                if arg.large_image_key.is_some() {
-                    todo!()
-                };
-                if arg.large_image_text.is_some() {
-                    todo!()
-                };
-                if arg.small_image_key.is_some() {
-                    todo!()
-                };
-                if arg.small_image_text.is_some() {
-                    todo!()
-                };
-                if arg.state.is_some() {
-                    todo!()
-                };
+                set(config, arg);
+            }
+            CliDiscordSubcommands::Update => {
+                exchange(b"discord update", &socket_path()).unwrap();
             }
         },
         CliSubcommands::Kill => kill_daemon(),
@@ -63,6 +57,6 @@ pub fn parse_command() -> () {
             }
             CliSpotifySubcommands::Remove => todo!(),
         },
-        CliSubcommands::Start => start_daemon(),
+        CliSubcommands::Start => start_daemon(config),
     };
 }

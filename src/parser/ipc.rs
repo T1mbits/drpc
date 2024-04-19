@@ -2,8 +2,8 @@ use interprocess::local_socket::LocalSocketStream;
 use std::{io::BufReader, process, sync::mpsc::RecvTimeoutError, thread, time};
 
 use crate::{
-    daemon::{socket::write, ChannelCommunications},
-    discord::DiscordThreadCommands,
+    daemon::{discord::DiscordThreadCommands, socket::write, ChannelCommunications},
+    logging::ddrpc_log,
 };
 
 pub fn ipc_parser(
@@ -26,25 +26,49 @@ pub fn ipc_parser(
             process::exit(0);
         }
         "discord" => match final_buffer[1] {
-            "get" => {
+            // "get" => {
+            //     channel_communications
+            //         .discord
+            //         .send(DiscordThreadCommands::Get)
+            //         .unwrap();
+            //     write(
+            //         socket_stream,
+            //         match &channel_communications
+            //             .main
+            //             .recv_timeout(time::Duration::from_secs(5))
+            //         {
+            //             Err(error) if error == &RecvTimeoutError::Timeout => {
+            //                 b"Discord RPC thread did not respond"
+            //             }
+            //             Err(_error) => b"Discord RPC thread's sender disconnected", // Probably retry Discord thread initialization
+            //             Ok(buffer) => buffer,
+            //         },
+            //     )
+            // }
+            "connect" => {
+                match channel_communications
+                    .discord
+                    .send(DiscordThreadCommands::Connect)
+                {
+                    Ok(_) => {}
+                    Err(error) => {
+                        ddrpc_log(&format!("{}", error));
+                        write(socket_stream, format!("{}", error).as_bytes())
+                    }
+                };
+                ddrpc_log("connection command sent")
+            }
+            "disconnect" => {
                 channel_communications
                     .discord
-                    .send(DiscordThreadCommands::Get)
+                    .send(DiscordThreadCommands::Disconnect)
                     .unwrap();
-                write(
-                    socket_stream,
-                    match &channel_communications
-                        .main
-                        .recv_timeout(time::Duration::from_secs(5))
-                    {
-                        Err(error) if error == &RecvTimeoutError::Timeout => {
-                            b"Discord RPC thread did not respond"
-                        }
-                        Err(_error) => b"Discord RPC thread's sender disconnected", // Probably retry Discord thread initialization
-                        Ok(buffer) => buffer,
-                    },
-                )
+                ddrpc_log("disconnection command sent")
             }
+            "update" => channel_communications
+                .discord
+                .send(DiscordThreadCommands::Update)
+                .unwrap(),
             str => write(
                 socket_stream,
                 format!("Unknown discord command: {str}").as_bytes(),
