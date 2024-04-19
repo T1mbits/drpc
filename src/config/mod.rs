@@ -6,36 +6,32 @@ use toml::{from_str, to_string};
 
 use crate::config::structure::DConfig;
 
-/// Generates the directory for where the config file should be located.
-///
-/// Use this function in case of different OS or no accessible configuration directory environment variable
-fn generate_config_dir_path() -> String {
+fn dir_path() -> String {
     match config_dir() {
         Some(config_dir) => match config_dir.to_str() {
-            None => "./ddrpc".to_owned(),
-            Some(config_dir) => config_dir.to_owned() + "/ddrpc",
+            None => "./ddrpc/".to_owned(),
+            Some(config_dir) => config_dir.to_owned() + "/ddrpc/",
         },
-        None => "./ddrpc".to_owned(),
+        None => "./ddrpc/".to_owned(),
     }
 }
 
-/// Generates the file location for where the config file should be located.
-///
-/// Uses `generate_config_dir_path()` and appends file location.
-fn generate_config_file_path() -> String {
-    generate_config_dir_path() + "/ddrpc.toml"
+fn file_path() -> String {
+    dir_path() + "ddrpc.toml"
 }
 
 pub fn initialize_config() -> DConfig {
-    if Path::new(&generate_config_file_path()).exists() {
-        return read_config_file();
-    };
-    DConfig::default()
+    if Path::new(&file_path()).exists() {
+        read_config_file()
+    } else {
+        write_config(&DConfig::default());
+        read_config_file()
+    }
 }
 
 pub fn write_config(config: &DConfig) -> () {
-    let config_dir: String = generate_config_dir_path();
-    let config_file: String = generate_config_file_path();
+    let config_dir: String = dir_path();
+    let config_file: String = file_path();
 
     let serialized_config: String = match to_string(config) {
         Ok(serialized_config) => serialized_config,
@@ -65,7 +61,7 @@ pub fn write_config(config: &DConfig) -> () {
 }
 
 pub fn read_config_file() -> DConfig {
-    let config_file: String = generate_config_file_path();
+    let config_file: String = file_path();
     match fs::read(&config_file) {
         Ok(config_vector) => verify_config_integrity(config_vector, config_file),
         Err(error) => {
@@ -87,13 +83,16 @@ fn verify_config_integrity(config_vector: Vec<u8>, config_file: String) -> DConf
         Err(error) => {
             eprintln!("Error while deserializing configuration file: {}", error);
             match fs::remove_file(config_file) {
-                Ok(_) => println!("Removed invalid configuration file"),
+                Ok(_) => {
+                    println!("Removed invalid configuration file");
+                    write_config(&DConfig::default());
+                    initialize_config()
+                }
                 Err(error) => {
                     eprintln!("Error while removing invalid configuration file: {}", error);
                     process::exit(1);
                 }
             }
-            initialize_config()
         }
         Ok(config) => config,
     }
