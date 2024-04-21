@@ -1,3 +1,5 @@
 pub mod cli;
 pub mod ipc;
-pub mod structure;
+mod structure;
+
+pub use structure::*;

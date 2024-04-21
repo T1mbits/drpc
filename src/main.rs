@@ -4,7 +4,7 @@ pub mod discord;
 pub mod logging;
 pub mod parser;
 
-use config::{initialize_config, structure::DConfig};
+use config::{initialize_config, DConfig};
 use parser::cli::parse_command;
 
 fn main() {

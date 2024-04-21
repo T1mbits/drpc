@@ -3,13 +3,9 @@ use std::io;
 use discord_rpc_client::{models::ActivityAssets, Client};
 
 use crate::{
-    config::{
-        read_config_file,
-        structure::{DConfig, DiscordConfig},
-        write_config,
-    },
+    config::{read_config_file, write_config, DConfig, DiscordConfig},
     logging::ddrpc_log,
-    parser::structure::CliDiscordSet,
+    parser::CliDiscordSet,
 };
 
 pub fn get(config: &DiscordConfig) {

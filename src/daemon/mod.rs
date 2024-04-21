@@ -10,7 +10,7 @@ use std::{
 };
 
 use crate::{
-    config::structure::DConfig,
+    config::DConfig,
     daemon::{
         discord::{discord_thread, DiscordThreadCommands},
         socket::*,
@@ -64,23 +64,22 @@ pub fn start_daemon(config: DConfig) {
         // judging off of tests this for loop keeps the daemon active, although it does block it while waiting for
         // the tests
         for connection in listener.incoming().filter_map(handle_connection_error) {
-            let mut response = match listener_receive(connection) {
+            match listener_receive(connection) {
                 Err(error) => {
                     ddrpc_log(&format!(
                         "An error occurred while trying to receive the connection: {error}"
                     ));
                     continue;
                 }
-                Ok(response) => response,
+                Ok((buffer, socket_stream)) => ipc_parser(
+                    buffer,
+                    socket_stream,
+                    &ChannelCommunications {
+                        discord: discord_sender.clone(),
+                        main: &receiver_main,
+                    },
+                ),
             };
-            ipc_parser(
-                response.buffer,
-                &mut response.buf_reader_socket_stream,
-                &ChannelCommunications {
-                    discord: discord_sender.clone(),
-                    main: &receiver_main,
-                },
-            );
         }
     }
 }

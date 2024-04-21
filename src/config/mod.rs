@@ -1,10 +1,10 @@
-pub mod structure;
+mod structure;
+
+pub use structure::*;
 
 use dirs::config_dir;
 use std::{fs, path::Path, process};
 use toml::{from_str, to_string};
-
-use crate::config::structure::DConfig;
 
 pub fn dir_path() -> String {
     match config_dir() {

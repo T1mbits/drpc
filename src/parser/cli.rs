@@ -1,5 +1,5 @@
 use crate::{
-    config::structure::DConfig,
+    config::DConfig,
     daemon::{
         kill_daemon, ping_daemon,
         socket::{exchange, socket_path},

@@ -1,4 +1,4 @@
-use crate::{config::structure::DiscordConfig, discord::*, logging::ddrpc_log};
+use crate::{config::DiscordConfig, discord::*, logging::ddrpc_log};
 
 use discord_rpc_client::Client;
 use std::{
