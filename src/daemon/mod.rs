@@ -40,10 +40,10 @@ pub fn start_daemon(config: DConfig) {
         }
         Ok(socket_listener) => socket_listener,
     };
-    println!("Created and bound socket listener to {socket_name}");
-    ddrpc_log(&format!(
-        "Created and bound socket listener to {socket_name}"
-    ));
+    // println!("Created and bound socket listener to {socket_name}");
+    // ddrpc_log(&format!(
+    //     "Created and bound socket listener to {socket_name}"
+    // ));
 
     println!("Forking into daemon...");
     ddrpc_log("Forking into daemon...");

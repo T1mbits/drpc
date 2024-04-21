@@ -15,10 +15,10 @@ pub fn parse_command(config: DConfig) -> () {
     match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
             CliDiscordSubcommands::Connect => {
-                exchange(b"discord connect", &socket_path()).unwrap();
+                exchange(b"discord connect", socket_path()).unwrap();
             }
             CliDiscordSubcommands::Disconnect => {
-                exchange(b"discord disconnect", &socket_path()).unwrap();
+                exchange(b"discord disconnect", socket_path()).unwrap();
             }
             CliDiscordSubcommands::Get => {
                 get(&config.discord);
@@ -27,7 +27,7 @@ pub fn parse_command(config: DConfig) -> () {
                 set(config, arg);
             }
             CliDiscordSubcommands::Update => {
-                exchange(b"discord update", &socket_path()).unwrap();
+                exchange(b"discord update", socket_path()).unwrap();
             }
         },
         CliSubcommands::Kill => kill_daemon(),

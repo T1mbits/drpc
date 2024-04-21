@@ -10,6 +10,7 @@ pub fn ddrpc_log(data: &str) {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .append(true)
+        .create(true)
         .open("/home/Timbits/.config/ddrpc/daemon-log.txt")
         .unwrap();
     let time = Local::now();

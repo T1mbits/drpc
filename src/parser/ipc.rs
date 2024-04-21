@@ -8,7 +8,7 @@ use crate::{
 
 pub fn ipc_parser(
     buffer: String,
-    socket_stream: &mut BufReader<LocalSocketStream>,
+    mut socket_stream: BufReader<LocalSocketStream>,
     channel_communications: &ChannelCommunications,
 ) -> () {
     let split_buffer: Vec<String> = buffer
@@ -20,9 +20,9 @@ pub fn ipc_parser(
     thread::sleep(time::Duration::from_millis(100));
 
     match final_buffer[0] {
-        "ping" => write(socket_stream, b"pong"),
+        "ping" => write(&mut socket_stream, b"pong").unwrap(),
         "kill" => {
-            write(socket_stream, b"Killing process");
+            write(&mut socket_stream, b"Killing process").unwrap();
             process::exit(0);
         }
         "discord" => match final_buffer[1] {
@@ -53,27 +53,28 @@ pub fn ipc_parser(
                     Ok(_) => {}
                     Err(error) => {
                         ddrpc_log(&format!("{}", error));
-                        write(socket_stream, format!("{}", error).as_bytes())
+                        write(&mut socket_stream, format!("{}", error).as_bytes()).unwrap();
                     }
                 };
-                ddrpc_log("connection command sent")
+                ddrpc_log("connection command sent");
             }
             "disconnect" => {
                 channel_communications
                     .discord
                     .send(DiscordThreadCommands::Disconnect)
                     .unwrap();
-                ddrpc_log("disconnection command sent")
+                ddrpc_log("disconnection command sent");
             }
             "update" => channel_communications
                 .discord
                 .send(DiscordThreadCommands::Update)
                 .unwrap(),
             str => write(
-                socket_stream,
+                &mut socket_stream,
                 format!("Unknown discord command: {str}").as_bytes(),
-            ),
+            )
+            .unwrap(),
         },
-        _ => write(socket_stream, b"Unknown input"),
+        _ => write(&mut socket_stream, b"Unknown input").unwrap(),
     }
 }

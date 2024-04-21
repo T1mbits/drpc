@@ -18,22 +18,11 @@ pub fn handle_connection_error(
 }
 
 /// Returns a string slice for the domain socket location.<br>
-/// A `todo!` macro is present because I have no idea what those branches do.
+/// todo: Windows and MacOS (but not really MacOS)
 pub fn socket_path() -> &'static str {
     use NameTypeSupport::*;
     match NameTypeSupport::query() {
         Both => "@/Timbits/ddrpc.sock\n",
-        OnlyNamespaced => todo!(),
-        OnlyPaths => todo!(),
-    }
-}
-
-/// Returns a string slice for the domain socket output location.<br>
-/// A `todo!` macro is present because I have no idea what that branch does.
-pub fn output_socket_path() -> &'static str {
-    use NameTypeSupport::*;
-    match NameTypeSupport::query() {
-        Both => "@/Timbits/ddrpc_out.sock",
         OnlyNamespaced => todo!(),
         OnlyPaths => todo!(),
     }
@@ -60,55 +49,47 @@ pub fn create_connection(socket_name: &str) -> Result<LocalSocketStream, io::Err
     }
 }
 
-/// Datatype containing the socket stream read from and the buffer value read from it
-pub struct SocketConnectionResponse {
-    pub buffer: String,
-    pub buf_reader_socket_stream: BufReader<LocalSocketStream>,
-}
-
-/// Processes any socket stream connections and returns a `SocketConnectionResponse`
+/// Processes any socket stream connections and returns a tuple containing the buffer and socket stream in a `BufReader`.
 pub fn listener_receive(
     connection: LocalSocketStream,
-) -> Result<SocketConnectionResponse, io::Error> {
+) -> Result<(String, BufReader<LocalSocketStream>), io::Error> {
     let mut connection = BufReader::new(connection);
     let buffer: &mut String = &mut String::new();
 
     match connection.read_line(buffer) {
         Err(error) => Err(error),
-        Ok(_) => Ok(SocketConnectionResponse {
-            buffer: buffer.to_owned(),
-            buf_reader_socket_stream: connection,
-        }),
+        Ok(_) => Ok((buffer.to_owned(), connection)),
     }
 }
 
-/// Writes the given bytes to the given `BufReader<LocalSocketStream>`.<br>
-/// Automatically logs any errors.
-pub fn write(socket_stream: &mut BufReader<LocalSocketStream>, buffer: &[u8]) -> () {
+/// Writes bytes to the given `BufReader<LocalSocketStream>`
+pub fn write(
+    socket_stream: &mut BufReader<LocalSocketStream>,
+    buffer: &[u8],
+) -> Result<(), io::Error> {
     let mut buffer = buffer.to_vec();
     buffer.push(b'\n');
     match socket_stream.get_mut().write_all(&buffer) {
-        Err(error) => ddrpc_log(&format!("Error while writing connection: {error}")),
-        Ok(_) => ddrpc_log(&format!(
-            "Successfully wrote \"{}\" to buffer",
-            std::str::from_utf8(&buffer).unwrap()
-        )),
-    };
+        Err(error) => Err(error),
+        Ok(_) => Ok(()),
+    }
 }
 
-/// Send a buffer to the given socket path
+/// Send a buffer to the given socket path and converts socket path to a `BufReader<LocalSocketStream>`
 pub fn send(buffer: &[u8], socket_path: &str) -> Result<BufReader<LocalSocketStream>, io::Error> {
     let socket_stream: LocalSocketStream = match create_connection(socket_path) {
         Err(error) => return Err(error),
         Ok(socket_stream) => socket_stream,
     };
     let mut buffered_socket_stream: BufReader<LocalSocketStream> = BufReader::new(socket_stream);
-    write(&mut buffered_socket_stream, buffer);
-    Ok(buffered_socket_stream)
+    match write(&mut buffered_socket_stream, buffer) {
+        Err(error) => Err(error),
+        Ok(_) => Ok(buffered_socket_stream),
+    }
 }
 
 /// Read a buffer sent from the given socket stream.<br>
-/// Will block the thread until a newline character (`0xA` byte) is given
+/// Will block the thread until a newline character (`0xA` byte, `\n`) is given
 pub fn receive(socket_stream: BufReader<LocalSocketStream>) -> Result<String, io::Error> {
     let mut buffer = String::new();
     let mut socket_stream = socket_stream;
