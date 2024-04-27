@@ -1,14 +1,14 @@
 use std::io;
 
 use discord_rpc_client::{models::ActivityAssets, Client};
+use tracing::{debug, info, warn};
 
 use crate::{
     config::{read_config_file, write_config, DConfig, DiscordConfig},
-    logging::ddrpc_log,
     parser::CliDiscordSet,
 };
 
-pub fn get(config: &DiscordConfig) {
+pub fn discord_get(config: &DiscordConfig) {
     println!(
         "Client ID: {}\nDetails: {}\nState: {}\nLarge Image Key: {}\nLarge Image Text: {}\nSmall Image Key: {}\nSmall Image Text: {}",
         config.client_id,
@@ -21,7 +21,7 @@ pub fn get(config: &DiscordConfig) {
     );
 }
 
-pub fn set(mut config: DConfig, arg: CliDiscordSet) {
+pub fn discord_set(mut config: DConfig, arg: CliDiscordSet) {
     if let Some(id) = arg.client_id {
         config.discord.client_id = id
     }
@@ -46,14 +46,16 @@ pub fn set(mut config: DConfig, arg: CliDiscordSet) {
     write_config(&config);
 }
 
-pub fn init(config: &DiscordConfig) -> Result<Client, io::Error> {
+pub fn discord_client_init(config: &DiscordConfig) -> Result<Client, io::Error> {
     let mut client: Client = Client::new(config.client_id);
-    ddrpc_log("Attempting to start client");
+    info!("Attempting to start client");
     client.start();
-    client.on_ready(|_context| {
-        ddrpc_log("Discord Client ready!");
+
+    client.on_ready(move |_context| {
+        info!("Discord Client ready!");
     });
-    client.on_error(|context| ddrpc_log(&format!("Error: {:?}", context)));
+
+    client.on_error(move |context| warn!("Error: {context:#?}"));
     // match client.set_activity(|activity| activity.state("test")) {
     //     Ok(_) => {}
     //     Err(error) => ddrpc_log(&format!("Error while setting activity: {}", error)),
@@ -62,8 +64,8 @@ pub fn init(config: &DiscordConfig) -> Result<Client, io::Error> {
     return Ok(client);
 }
 
-pub fn start(config: &DiscordConfig, client: &mut Client) {
-    ddrpc_log(&format!("{:?}", config));
+pub fn discord_set_activity(config: &DiscordConfig, client: &mut Client) {
+    debug!("{config:#?}");
     client
         .set_activity(|activity| {
             let mut activity = activity;
@@ -96,19 +98,21 @@ pub fn start(config: &DiscordConfig, client: &mut Client) {
                 }
                 activity.assets = Some(assets);
             }
-            ddrpc_log(&format!("{:?}", activity));
+            debug!("{activity:#?}");
             activity
         })
         .unwrap();
 }
 
-pub fn stop(client: &mut Client) -> Result<bool, io::Error> {
+pub fn discord_stop(client: &mut Client) -> Result<bool, io::Error> {
     client.clear_activity().unwrap();
+    info!("Discord RPC activity cleared");
     Ok(true)
 }
 
-pub fn update(config: &mut DiscordConfig, client: &mut Client) -> () {
+pub fn discord_update(config: &mut DiscordConfig, client: &mut Client) -> () {
     *config = read_config_file().discord;
-    ddrpc_log(&format!("{:?}", config));
-    start(&config, client);
+    debug!("{config:#?}");
+    info!("Updating Discord RPC");
+    discord_set_activity(&config, client);
 }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DConfig {
     pub discord: DiscordConfig,
     pub spotify: SpotifyConfig,
@@ -42,7 +42,7 @@ impl Default for DConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DiscordConfig {
     pub client_id: u64,
     pub state: String,
@@ -50,7 +50,7 @@ pub struct DiscordConfig {
     pub assets: DiscordConfigAssets,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DiscordConfigAssets {
     pub large_image: String,
     pub large_text: String,
@@ -67,19 +67,19 @@ impl DiscordConfigAssets {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SpotifyConfig {
     pub client_id: String,
     pub client_secret: String,
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProcessesConfig {
     pub process: Vec<ProcessesProcessConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProcessesProcessConfig {
     pub display: String,
     pub name: String,

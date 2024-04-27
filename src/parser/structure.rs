@@ -13,6 +13,8 @@ const START_ABOUT: &str = "Start the daemon process";
 pub struct Cli {
     #[command(subcommand)]
     pub subcommands: CliSubcommands,
+    #[arg(short = 'd', long, help = "Enable debug logs")]
+    pub debug: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -42,9 +44,15 @@ pub struct CliDiscord {
 pub enum CliDiscordSubcommands {
     Connect,
     Disconnect,
-    Get,
+    Get(CliDiscordGet),
     Set(CliDiscordSet),
     Update,
+}
+
+#[derive(Debug, Args)]
+pub struct CliDiscordGet {
+    #[arg(short = 'd', long)]
+    pub daemon: bool,
 }
 
 #[derive(Debug, Args)]
@@ -119,22 +127,24 @@ CLI
 |	|- connect
 |	|- disconnect
 |	|- get
+|	|	|- --daemon (get config from daemon)
 |	|- set
-|		|- --client-id
-|		|- --details
-|		|- --large-image-key
-|		|- --large-image-text
-|		|- --small-image-key
-|		|- --small-image-text
-|		|- --state
+|	|	|- --client-id
+|	|	|- --details
+|	|	|- --large-image-key
+|	|	|- --large-image-text
+|	|	|- --small-image-key
+|	|	|- --small-image-text
+|	|	|- --state
+|	|- update
 |
 |- processes
 |	|- add
-|		|- --display
-|		|- --name
+|	|	|- --display
+|	|	|- --name
 |	|- list (list all chosen processes)
 |	|- remove
-|		|- --name
+|	|	|- --name
 |	|- show (list all active processes)
 |
 |- spotify
