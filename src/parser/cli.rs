@@ -1,32 +1,24 @@
-use crate::{
-    config::DConfig,
-    discord::{discord_client_init, discord_set_activity},
-    log_setup, log_setup_debug,
-    parser::structure::*,
-};
-use clap::Parser;
-use tracing::trace;
+use crate::{config::Config, discord::*, parser::structure::*};
+use tracing::{instrument, trace};
 
-pub fn parse_command(config: DConfig) -> () {
-    let args: Cli = Cli::parse();
-
-    if args.debug {
-        log_setup_debug();
-    } else {
-        log_setup();
-    }
-
-    trace!("{args:#?}");
+#[instrument(skip_all)]
+pub fn parse_command(config: Config, args: Cli) {
+    trace!("Parsing command arguments:\n{args:#?}");
 
     match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
-            CliDiscordSubcommands::Connect => discord_set_activity(
-                &config.discord,
-                &mut discord_client_init(&config.discord).unwrap(),
-            ),
+            CliDiscordSubcommands::Connect => {
+                set_activity(&config.discord, &mut client_init(&config.discord).unwrap())
+            }
             CliDiscordSubcommands::Disconnect => todo!(),
-            CliDiscordSubcommands::Get(_arg) => todo!(),
-            CliDiscordSubcommands::Set(_arg) => todo!(),
+            CliDiscordSubcommands::Get(arg) => {
+                if arg.daemon {
+                    todo!()
+                } else {
+                    get_activity_data(config.discord);
+                }
+            }
+            CliDiscordSubcommands::Set(args) => set_activity_data(config, args),
             CliDiscordSubcommands::Update => todo!(),
         },
         CliSubcommands::Kill => todo!(),
