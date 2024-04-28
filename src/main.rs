@@ -19,10 +19,10 @@ fn main() -> () {
 
     let config: Config = initialize_config();
 
-    parse_command(config, args);
-
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
+    if let Some(_client) = parse_command(config, args) {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(10));
+        }
     }
 }
 

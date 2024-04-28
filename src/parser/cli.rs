@@ -1,14 +1,15 @@
 use crate::{config::Config, discord::*, parser::structure::*};
+use discord_rich_presence::DiscordIpcClient;
 use tracing::{instrument, trace};
 
 #[instrument(skip_all)]
-pub fn parse_command(config: Config, args: Cli) {
+pub fn parse_command(config: Config, args: Cli) -> Option<DiscordIpcClient> {
     trace!("Parsing command arguments:\n{args:#?}");
 
     match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
             CliDiscordSubcommands::Connect => {
-                set_activity(&config.discord, &mut client_init(&config.discord).unwrap())
+                return Some(set_activity(&config.discord, client_init(&config.discord)))
             }
             CliDiscordSubcommands::Disconnect => todo!(),
             CliDiscordSubcommands::Get(arg) => {
@@ -50,4 +51,5 @@ pub fn parse_command(config: Config, args: Cli) {
         },
         CliSubcommands::Start => todo!(),
     };
+    None
 }

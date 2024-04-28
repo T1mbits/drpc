@@ -91,6 +91,14 @@ impl DiscordButtons {
             && self.btn2_text.is_empty()
             && self.btn2_url.is_empty()
     }
+
+    pub fn btn1_is_empty(&self) -> bool {
+        self.btn1_text.is_empty() || self.btn1_url.is_empty()
+    }
+
+    pub fn btn2_is_empty(&self) -> bool {
+        self.btn2_text.is_empty() || self.btn2_url.is_empty()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

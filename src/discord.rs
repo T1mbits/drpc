@@ -2,9 +2,10 @@ use crate::{
     config::{read_config_file, write_config, Config, DiscordConfig},
     parser::CliDiscordSet,
 };
-use discord_rpc_client::{models::ActivityAssets, Client};
-use std::io::Error;
-use tracing::{debug, info, instrument, trace, warn};
+use discord_rich_presence::{activity::*, DiscordIpc, DiscordIpcClient};
+// use discord_rpc_client::{models::ActivityAssets, Client};
+use std::{io::Error, process::exit};
+use tracing::{debug, error, info, instrument, trace, warn};
 
 pub fn get_activity_data(config: DiscordConfig) -> () {
     println!(
@@ -66,73 +67,91 @@ pub fn set_activity_data(mut config: Config, arg: CliDiscordSet) -> () {
 }
 
 #[instrument(skip_all)]
-pub fn client_init(config: &DiscordConfig) -> Result<Client, Error> {
-    let mut client: Client = Client::new(config.client_id);
-    info!("Starting Discord Client");
-    client.start();
+pub fn client_init(config: &DiscordConfig) -> DiscordIpcClient {
+    let mut client = DiscordIpcClient::new(&config.client_id.to_string()).unwrap();
 
-    client.on_ready(move |_context| {
-        info!("Discord Client ready!");
-    });
+    match client.connect() {
+        Err(err) => {
+            error!("{err}");
+            exit(1)
+        }
+        Ok(_) => info!("Discord Client connected to IPC"),
+    }
 
-    client.on_error(move |context| warn!("Error: {context:#?}"));
-
-    return Ok(client);
-}
-
-#[instrument(skip_all)]
-pub fn set_activity(config: &DiscordConfig, client: &mut Client) -> () {
-    debug!("Setting Discord activity to:\n{config:#?}");
     client
-        .set_activity(|activity| {
-            let mut activity = activity;
-
-            if !config.details.is_empty() {
-                activity.details = Some(config.details.to_owned());
-            }
-
-            if !config.state.is_empty() {
-                activity.state = Some(config.state.to_owned());
-            }
-
-            if !config.assets.is_empty() {
-                let mut assets = ActivityAssets::new();
-
-                if !config.assets.large_image.is_empty() {
-                    assets.large_image = Some(config.assets.large_image.to_owned());
-                }
-
-                if !config.assets.large_text.is_empty() {
-                    assets.large_text = Some(config.assets.large_text.to_owned());
-                }
-
-                if !config.assets.small_image.is_empty() {
-                    assets.small_image = Some(config.assets.small_image.to_owned());
-                }
-
-                if !config.assets.small_text.is_empty() {
-                    assets.small_text = Some(config.assets.small_text.to_owned());
-                }
-                activity.assets = Some(assets);
-            }
-
-            trace!("Discord activity set to:\n{activity:#?}");
-            activity
-        })
-        .unwrap();
 }
 
 #[instrument(skip_all)]
-pub fn clear_activity(client: &mut Client) -> Result<bool, Error> {
+pub fn set_activity(config: &DiscordConfig, mut client: DiscordIpcClient) -> DiscordIpcClient {
+    debug!("Setting Discord activity to:\n{config:#?}");
+
+    let mut activity = Activity::new().state("state");
+
+    if !config.details.is_empty() {
+        activity = activity.details(&config.details);
+    }
+
+    if !config.state.is_empty() {
+        activity = activity.state(&config.state);
+    }
+
+    if !config.assets.is_empty() {
+        let mut assets = Assets::new();
+
+        if !config.assets.large_image.is_empty() {
+            assets = assets.large_image(&config.assets.large_image);
+        }
+
+        if !config.assets.large_text.is_empty() {
+            assets = assets.large_text(&config.assets.large_text);
+        }
+
+        if !config.assets.small_image.is_empty() {
+            assets = assets.small_image(&config.assets.small_image);
+        }
+
+        if !config.assets.small_text.is_empty() {
+            assets = assets.small_text(&config.assets.small_text);
+        }
+
+        activity = activity.assets(assets);
+    }
+
+    if !config.buttons.is_empty() {
+        let mut buttons: Vec<Button> = Vec::new();
+
+        if !config.buttons.btn1_is_empty() {
+            buttons.push(Button::new(
+                &config.buttons.btn1_text,
+                &config.buttons.btn1_url,
+            ));
+        }
+
+        if !config.buttons.btn2_is_empty() {
+            buttons.push(Button::new(
+                &config.buttons.btn2_text,
+                &config.buttons.btn2_url,
+            ));
+        }
+
+        activity = activity.buttons(buttons);
+    }
+
+    client.set_activity(activity).unwrap();
+    client
+}
+
+#[instrument(skip_all)]
+pub fn clear_activity(mut client: DiscordIpcClient) -> Result<DiscordIpcClient, Error> {
     client.clear_activity().unwrap();
     info!("Discord RPC activity cleared");
-    Ok(true)
+    Ok(client)
 }
 
 #[instrument(skip_all)]
-pub fn update_activity(config: &mut DiscordConfig, client: &mut Client) -> () {
+pub fn update_activity(config: &mut DiscordConfig, client: DiscordIpcClient) -> DiscordIpcClient {
     *config = read_config_file().discord;
     trace!("Discord config:\n{config:#?}");
     info!("Updating Discord RPC");
-    set_activity(&config, client);
+    set_activity(&config, client)
 }
