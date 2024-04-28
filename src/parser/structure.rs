@@ -61,6 +61,8 @@ pub struct CliDiscordSet {
     pub client_id: Option<u64>,
     #[arg(short = 'd', long)]
     pub details: Option<String>,
+    #[arg(short = 's', long)]
+    pub state: Option<String>,
     #[arg(short = 'I', long)]
     pub large_image: Option<String>,
     #[arg(short = 'i', long)]
@@ -69,8 +71,14 @@ pub struct CliDiscordSet {
     pub large_text: Option<String>,
     #[arg(short = 't', long)]
     pub small_text: Option<String>,
-    #[arg(short = 's', long)]
-    pub state: Option<String>,
+    #[arg(short = 'b', long)]
+    pub button1_text: Option<String>,
+    #[arg(short = 'u', long)]
+    pub button1_url: Option<String>,
+    #[arg(short = 'B', long)]
+    pub button2_text: Option<String>,
+    #[arg(short = 'U', long)]
+    pub button2_url: Option<String>,
 }
 
 #[derive(Debug, Args)]
