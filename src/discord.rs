@@ -1,13 +1,19 @@
 use crate::{
     config::{read_config_file, write_config, Config, DiscordConfig},
     parser::CliDiscordSet,
+    processes::{get_processes, replace_asset},
 };
 use discord_rich_presence::{activity::*, DiscordIpc, DiscordIpcClient};
 // use discord_rpc_client::{models::ActivityAssets, Client};
-use std::{io::Error, process::exit};
-use tracing::{debug, error, info, instrument, trace, warn};
+use std::{collections::HashMap, io::Error, process::exit};
+use tracing::{error, info, instrument, trace, warn};
 
-pub fn get_activity_data(config: DiscordConfig) -> () {
+pub struct DiscordClientWrapper {
+    client: DiscordIpcClient,
+    replaced_data: DiscordConfig,
+}
+
+pub fn get_activity_data(config: &DiscordConfig) -> () {
     println!(
         "Client ID: {}\nDetails: {}\nState: {}\nLarge Image Key: {}\nLarge Image Text: {}\nSmall Image Key: {}\nSmall Image Text: {}\nButton 1 Text: {}\nButton 1 URL: {}\nButton 2 Text: {}\nButton 2 URL: {}",
         config.client_id,
@@ -24,7 +30,7 @@ pub fn get_activity_data(config: DiscordConfig) -> () {
     );
 }
 
-pub fn set_activity_data(mut config: Config, arg: CliDiscordSet) -> () {
+pub fn set_activity_data(config: &mut Config, arg: CliDiscordSet) -> () {
     if let Some(id) = arg.client_id {
         config.discord.client_id = id
     }
@@ -67,8 +73,8 @@ pub fn set_activity_data(mut config: Config, arg: CliDiscordSet) -> () {
 }
 
 #[instrument(skip_all)]
-pub fn client_init(config: &DiscordConfig) -> DiscordIpcClient {
-    let mut client = DiscordIpcClient::new(&config.client_id.to_string()).unwrap();
+pub fn client_init(client_id: u64) -> DiscordClientWrapper {
+    let mut client = DiscordIpcClient::new(&client_id.to_string()).unwrap();
 
     match client.connect() {
         Err(err) => {
@@ -78,80 +84,129 @@ pub fn client_init(config: &DiscordConfig) -> DiscordIpcClient {
         Ok(_) => info!("Discord Client connected to IPC"),
     }
 
-    client
+    return DiscordClientWrapper {
+        client,
+        replaced_data: DiscordConfig::default(),
+    };
 }
 
 #[instrument(skip_all)]
-pub fn set_activity(config: &DiscordConfig, mut client: DiscordIpcClient) -> DiscordIpcClient {
-    debug!("Setting Discord activity to:\n{config:#?}");
+fn template_hashmap(config: &Config) -> HashMap<&str, String> {
+    let processes = get_processes(&config.processes);
 
-    let mut activity = Activity::new().state("state");
+    let mut replace_hashmap: HashMap<&str, String> = HashMap::new();
+    replace_hashmap.insert(
+        "process.text",
+        replace_asset(&config.processes, &processes).0,
+    );
+    replace_hashmap.insert(
+        "process.icon",
+        replace_asset(&config.processes, &processes).1,
+    );
 
-    if !config.details.is_empty() {
-        activity = activity.details(&config.details);
+    return replace_hashmap;
+}
+
+#[instrument(skip_all)]
+pub fn replace_variables(template_hashmap: &HashMap<&str, String>, mut string: String) -> String {
+    if string.is_empty() {
+        return string;
+    }
+    for (target, replacement) in template_hashmap {
+        let target = format!("{{{{{}}}}}", target);
+        string = string.replace(&target, replacement)
     }
 
-    if !config.state.is_empty() {
-        activity = activity.state(&config.state);
+    return string;
+}
+
+#[instrument(skip_all)]
+pub fn set_activity(
+    mut client_wrapper: DiscordClientWrapper,
+    config: &mut Config,
+) -> DiscordClientWrapper {
+    let mut replaced_data: DiscordConfig = config.discord.clone();
+
+    let template_hashmap: HashMap<&str, String> = template_hashmap(config);
+    replaced_data = replaced_data.replace_templates(&template_hashmap);
+
+    if replaced_data == client_wrapper.replaced_data {
+        return client_wrapper;
     }
 
-    if !config.assets.is_empty() {
+    client_wrapper.replaced_data = replaced_data;
+
+    let mut activity = Activity::new();
+
+    if !config.discord.details.is_empty() {
+        activity = activity.details(&client_wrapper.replaced_data.details);
+    }
+
+    if !config.discord.state.is_empty() {
+        activity = activity.state(&client_wrapper.replaced_data.state);
+    }
+
+    if !config.discord.assets.is_empty() {
         let mut assets = Assets::new();
 
-        if !config.assets.large_image.is_empty() {
-            assets = assets.large_image(&config.assets.large_image);
+        if !config.discord.assets.large_image.is_empty() {
+            assets = assets.large_image(&client_wrapper.replaced_data.assets.large_image);
         }
 
-        if !config.assets.large_text.is_empty() {
-            assets = assets.large_text(&config.assets.large_text);
+        if !config.discord.assets.large_text.is_empty() {
+            assets = assets.large_text(&client_wrapper.replaced_data.assets.large_text)
         }
 
-        if !config.assets.small_image.is_empty() {
-            assets = assets.small_image(&config.assets.small_image);
+        if !config.discord.assets.small_image.is_empty() {
+            assets = assets.small_image(&client_wrapper.replaced_data.assets.small_image);
         }
 
-        if !config.assets.small_text.is_empty() {
-            assets = assets.small_text(&config.assets.small_text);
+        if !config.discord.assets.small_text.is_empty() {
+            assets = assets.small_text(&client_wrapper.replaced_data.assets.small_text);
         }
 
         activity = activity.assets(assets);
     }
 
-    if !config.buttons.is_empty() {
+    if !config.discord.buttons.is_empty() {
         let mut buttons: Vec<Button> = Vec::new();
 
-        if !config.buttons.btn1_is_empty() {
+        if !config.discord.buttons.btn1_is_empty() {
             buttons.push(Button::new(
-                &config.buttons.btn1_text,
-                &config.buttons.btn1_url,
+                &client_wrapper.replaced_data.buttons.btn1_text,
+                &client_wrapper.replaced_data.buttons.btn1_url,
             ));
         }
 
-        if !config.buttons.btn2_is_empty() {
+        if !config.discord.buttons.btn2_is_empty() {
             buttons.push(Button::new(
-                &config.buttons.btn2_text,
-                &config.buttons.btn2_url,
+                &client_wrapper.replaced_data.buttons.btn2_text,
+                &client_wrapper.replaced_data.buttons.btn2_url,
             ));
         }
 
         activity = activity.buttons(buttons);
     }
 
-    client.set_activity(activity).unwrap();
-    client
+    let data: DiscordConfig = client_wrapper.replaced_data.to_owned();
+    trace!("Activity set to: \n{data:#?}");
+
+    client_wrapper.client.set_activity(activity).unwrap();
+    return client_wrapper;
 }
 
 #[instrument(skip_all)]
 pub fn clear_activity(mut client: DiscordIpcClient) -> Result<DiscordIpcClient, Error> {
     client.clear_activity().unwrap();
     info!("Discord RPC activity cleared");
-    Ok(client)
+    return Ok(client);
 }
 
 #[instrument(skip_all)]
-pub fn update_activity(config: &mut DiscordConfig, client: DiscordIpcClient) -> DiscordIpcClient {
-    *config = read_config_file().discord;
-    trace!("Discord config:\n{config:#?}");
+pub fn update_activity(config: &mut Config, client: DiscordClientWrapper) -> DiscordClientWrapper {
+    *config = read_config_file();
     info!("Updating Discord RPC");
-    set_activity(&config, client)
+    let client: DiscordClientWrapper = set_activity(client, config);
+    info!("Updated Discord RPC");
+    return client;
 }

@@ -1,6 +1,7 @@
 pub mod config;
 pub mod discord;
 pub mod parser;
+pub mod processes;
 
 use clap::Parser;
 use config::{
@@ -8,6 +9,7 @@ use config::{
     initialize_config,
     Config,
 };
+use discord::update_activity;
 use parser::{cli::parse_command, Cli};
 use tracing::{debug, Level};
 // use tracing_appender::rolling;
@@ -17,11 +19,12 @@ fn main() -> () {
     let args: Cli = Cli::parse();
     log_setup(args.debug);
 
-    let config: Config = initialize_config();
+    let mut config: Config = initialize_config();
 
-    if let Some(_client) = parse_command(config, args) {
+    if let Some(mut client) = parse_command(&mut config, args) {
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(10));
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            client = update_activity(&mut config, client);
         }
     }
 }

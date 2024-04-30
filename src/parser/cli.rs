@@ -1,22 +1,24 @@
 use crate::{config::Config, discord::*, parser::structure::*};
-use discord_rich_presence::DiscordIpcClient;
 use tracing::{instrument, trace};
 
 #[instrument(skip_all)]
-pub fn parse_command(config: Config, args: Cli) -> Option<DiscordIpcClient> {
+pub fn parse_command(config: &mut Config, args: Cli) -> Option<DiscordClientWrapper> {
     trace!("Parsing command arguments:\n{args:#?}");
 
     match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
             CliDiscordSubcommands::Connect => {
-                return Some(set_activity(&config.discord, client_init(&config.discord)))
+                return Some(set_activity(
+                    client_init(config.discord.client_id.to_owned()),
+                    config,
+                ))
             }
             CliDiscordSubcommands::Disconnect => todo!(),
             CliDiscordSubcommands::Get(arg) => {
                 if arg.daemon {
                     todo!()
                 } else {
-                    get_activity_data(config.discord);
+                    get_activity_data(&config.discord);
                 }
             }
             CliDiscordSubcommands::Set(args) => set_activity_data(config, args),
