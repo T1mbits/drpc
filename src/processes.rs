@@ -1,9 +1,10 @@
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-use tracing::trace;
-
 use crate::config::ProcessesConfig;
+use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+use tracing::{instrument, trace};
 
-pub fn get_processes(config: &ProcessesConfig) -> Vec<String> {
+/// Creates a vector of all found target processes. Processes are searched for by process name from `ProcessesConfig`.
+#[instrument(skip_all)]
+pub fn get_names(config: &ProcessesConfig) -> Vec<String> {
     let sys = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
@@ -19,17 +20,21 @@ pub fn get_processes(config: &ProcessesConfig) -> Vec<String> {
 
     trace!("Found target processes \n{active_target_processes:#?}");
 
-    active_target_processes
+    return active_target_processes;
 }
 
-pub fn replace_asset(config: &ProcessesConfig, processes: &Vec<String>) -> (String, String) {
+/// Returns a tuple with the process text and process icon of the first active process found by `get_names()`.
+#[instrument(skip_all)]
+pub fn get_data(config: &ProcessesConfig, processes: &Vec<String>) -> (String, String) {
     for target_process in &config.process {
         if processes[0] == target_process.process {
+            trace!("Process chosen:\n{target_process:#?}");
             return (
                 target_process.text.to_owned(),
                 target_process.icon.to_owned(),
             );
         }
     }
-    (config.idle_text.to_owned(), config.idle_icon.to_owned())
+    trace!("No active target processes, using idle data");
+    return (config.idle_text.to_owned(), config.idle_icon.to_owned());
 }
