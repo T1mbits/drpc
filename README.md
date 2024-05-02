@@ -1,28 +1,28 @@
 # Dynamic Discord Rich Presence Customizer
 
 <details>
-<summary>Table of Contents</summary>
-<ol>
-	<li><a href="#about">About</a></li>
-	<li>
-		<a href="#getting-started">Getting Started</a>
-		<ul>
-			<li><a href="#installation">Installation</a></li>
-			<li><a href="#build">Build</a></li>
-		</ul>
-	</li>
-	<li><a href="#usage">Usage</a></li>
-	<li>
-		<a href="#featuresroadmap">Features/Roadmap</a>
-		<ul>
-			<li><a href="#010">0.1.0</a></li>
-			<li><a href="#020">0.2.0</a></li>
-			<li><a href="#030">0.3.0</a></li>
-		</ul>
-	</li>
-	<li><a href="#supported-platforms">Supported Platforms</a></li>
-	<!-- <li><a href=""></a></li> -->
-</ol>
+	<summary>Table of Contents</summary>
+	<ol>
+		<li><a href="#about">About</a></li>
+		<li>
+			<a href="#getting-started">Getting Started</a>
+			<ul>
+				<li><a href="#installation">Installation</a></li>
+				<li><a href="#build">Build</a></li>
+			</ul>
+		</li>
+		<li><a href="#usage">Usage</a></li>
+		<li>
+			<a href="#featuresroadmap">Features/Roadmap</a>
+			<ul>
+				<li><a href="#010">0.1.0</a></li>
+				<li><a href="#020">0.2.0</a></li>
+				<li><a href="#030">0.3.0</a></li>
+			</ul>
+		</li>
+		<li><a href="#supported-platforms">Supported Platforms</a></li>
+		<!-- <li><a href=""></a></li> -->
+	</ol>
 </details>
 
 ## About
@@ -94,7 +94,15 @@ I'll finish the CLI later...
 
 ## Supported Platforms
 
--   [x] Linux (Arch)
+-   [x] Linux
+<details>
+<summary>Tested on</summary>
+	<ul>
+		<li>Arch</li>
+	</ul>
+If you would like to add on other Linux OSes, please feel free to create an issue with the OS you used and if it's compatible or not, as well as any fixes to make the program work on the OS of choice.
+</details>
+
 -   [ ] Windows
 -   [ ] MacOS
 
