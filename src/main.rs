@@ -20,6 +20,7 @@ fn main() -> () {
     log_setup(args.debug, args.verbose);
 
     let mut config: Config = initialize_config(args.config_overwrite);
+    trace!("Config:\n{config:#?}");
 
     if let Some(mut client) = parse_command(&mut config, args) {
         loop {

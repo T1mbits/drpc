@@ -1,7 +1,7 @@
 use crate::{
     config::{read_config_file, write_config, Config, DiscordConfig},
     parser::CliDiscordSet,
-    processes::{get_data, get_names},
+    processes::{get_active_data, get_names},
 };
 use discord_rich_presence::{activity::*, DiscordIpc, DiscordIpcClient};
 use std::{collections::HashMap, io::Error, process::exit};
@@ -14,7 +14,7 @@ pub struct DiscordClientWrapper {
 }
 
 /// Print Discord activity data saved in config.
-pub fn get_activity_data(config: &DiscordConfig) -> () {
+pub fn print_activity_data(config: &DiscordConfig) -> () {
     println!(
         "Client ID: {}\nDetails: {}\nState: {}\nLarge Image Key: {}\nLarge Image Text: {}\nSmall Image Key: {}\nSmall Image Text: {}\nButton 1 Text: {}\nButton 1 URL: {}\nButton 2 Text: {}\nButton 2 URL: {}",
         config.client_id,
@@ -110,10 +110,12 @@ pub fn client_init(client_id: u64) -> DiscordClientWrapper {
 fn template_hashmap(config: &Config) -> HashMap<&str, String> {
     let processes = get_names(&config.processes);
 
+    let (process_text, process_icon) = get_active_data(&config.processes, &processes);
+
     let mut replace_hashmap: HashMap<&str, String> = HashMap::new();
-    replace_hashmap.insert("process.icon", get_data(&config.processes, &processes).1);
-    replace_hashmap.insert("process.text", get_data(&config.processes, &processes).0);
-    replace_hashmap.insert("idle.icon", config.processes.idle_icon.to_owned());
+    replace_hashmap.insert("process.icon", process_icon);
+    replace_hashmap.insert("process.text", process_text);
+    replace_hashmap.insert("idle.icon", config.processes.idle_image.to_owned());
     replace_hashmap.insert("idle.text", config.processes.idle_text.to_owned());
 
     trace!("Template variable hashmap created");
@@ -150,7 +152,7 @@ pub fn set_activity(
     trace!("Discord data cloned");
 
     let template_hashmap: HashMap<&str, String> = template_hashmap(config);
-    replaced_data = replaced_data.replace_templates(&template_hashmap);
+    replaced_data.replace_templates(&template_hashmap);
 
     if replaced_data == client_wrapper.replaced_data {
         debug!("Activity data has not changed");

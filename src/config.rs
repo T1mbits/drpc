@@ -1,5 +1,7 @@
+use crate::discord::replace_template_variables;
 use dirs::config_dir;
-use std::{fs, path::Path, process};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, path::Path, process};
 use toml::{from_str, to_string};
 use tracing::{debug, error, instrument, trace, warn};
 
@@ -138,10 +140,6 @@ fn verify_config_integrity(
     };
 }
 
-use crate::discord::replace_template_variables;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub discord: DiscordConfig,
@@ -170,11 +168,11 @@ impl Default for Config {
                 state: "".to_string(),
             },
             processes: ProcessesConfig {
-                idle_icon: "idle".to_string(),
+                idle_image: "idle".to_string(),
                 idle_text: "Idle".to_string(),
-                process: vec![ProcessesProcessConfig {
-                    icon: "code".to_string(),
-                    process: "code".to_string(),
+                processes: vec![ProcessConfig {
+                    image: "code".to_string(),
+                    name: "code".to_string(),
                     text: "Visual Studio Code".to_string(),
                 }],
             },
@@ -219,29 +217,29 @@ impl Default for DiscordConfig {
 }
 
 impl DiscordConfig {
-    pub fn replace_templates(mut self, template_hashmap: &HashMap<&str, String>) -> Self {
+    pub fn replace_templates(&mut self, template_hashmap: &HashMap<&str, String>) {
+        let config: DiscordConfig = self.to_owned();
+
         self.assets.large_image =
-            replace_template_variables(&template_hashmap, self.assets.large_image);
+            replace_template_variables(&template_hashmap, config.assets.large_image);
         self.assets.large_text =
-            replace_template_variables(&template_hashmap, self.assets.large_text);
+            replace_template_variables(&template_hashmap, config.assets.large_text);
         self.assets.small_image =
-            replace_template_variables(&template_hashmap, self.assets.small_image);
+            replace_template_variables(&template_hashmap, config.assets.small_image);
         self.assets.small_text =
-            replace_template_variables(&template_hashmap, self.assets.small_text);
+            replace_template_variables(&template_hashmap, config.assets.small_text);
 
         self.buttons.btn1_text =
-            replace_template_variables(&template_hashmap, self.buttons.btn1_text);
+            replace_template_variables(&template_hashmap, config.buttons.btn1_text);
         self.buttons.btn1_url =
-            replace_template_variables(&template_hashmap, self.buttons.btn1_url);
+            replace_template_variables(&template_hashmap, config.buttons.btn1_url);
         self.buttons.btn2_text =
-            replace_template_variables(&template_hashmap, self.buttons.btn2_text);
+            replace_template_variables(&template_hashmap, config.buttons.btn2_text);
         self.buttons.btn2_url =
-            replace_template_variables(&template_hashmap, self.buttons.btn2_url);
+            replace_template_variables(&template_hashmap, config.buttons.btn2_url);
 
-        self.details = replace_template_variables(&template_hashmap, self.details);
-        self.state = replace_template_variables(&template_hashmap, self.state);
-
-        return self;
+        self.details = replace_template_variables(&template_hashmap, config.details);
+        self.state = replace_template_variables(&template_hashmap, config.state);
     }
 }
 
@@ -296,15 +294,15 @@ pub struct SpotifyConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProcessesConfig {
-    pub idle_icon: String,
+    pub idle_image: String,
     pub idle_text: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub process: Vec<ProcessesProcessConfig>,
+    pub processes: Vec<ProcessConfig>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ProcessesProcessConfig {
-    pub icon: String,
-    pub process: String,
+pub struct ProcessConfig {
+    pub image: String,
+    pub name: String,
     pub text: String,
 }
