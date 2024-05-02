@@ -1,6 +1,9 @@
-use crate::config::ProcessesConfig;
+use crate::{
+    config::{write_config, Config, ProcessConfig, ProcessesConfig},
+    parser::{CliProcessesAdd, CliProcessesPriority, CliProcessesPriorityOperation},
+};
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-use tracing::{instrument, trace};
+use tracing::{error, instrument, trace};
 
 /// Creates a vector of all found target processes. Processes are searched for by process name from `ProcessesConfig`.
 #[instrument(skip_all)]
@@ -11,8 +14,8 @@ pub fn get_names(config: &ProcessesConfig) -> Vec<String> {
 
     let mut active_target_processes: Vec<String> = Vec::new();
 
-    for process in &config.process {
-        let mut p = sys.processes_by_exact_name(&process.process);
+    for process in &config.processes {
+        let mut p = sys.processes_by_exact_name(&process.name);
         if let Some(found_process) = p.next() {
             active_target_processes.push(found_process.name().to_owned());
         }
@@ -25,16 +28,160 @@ pub fn get_names(config: &ProcessesConfig) -> Vec<String> {
 
 /// Returns a tuple with the process text and process icon of the first active process found by `get_names()`.
 #[instrument(skip_all)]
-pub fn get_data(config: &ProcessesConfig, processes: &Vec<String>) -> (String, String) {
-    for target_process in &config.process {
-        if processes[0] == target_process.process {
+pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (String, String) {
+    for target_process in &config.processes {
+        if processes[0] == target_process.name {
             trace!("Process chosen:\n{target_process:#?}");
             return (
                 target_process.text.to_owned(),
-                target_process.icon.to_owned(),
+                target_process.image.to_owned(),
             );
         }
     }
     trace!("No active target processes, using idle data");
-    return (config.idle_text.to_owned(), config.idle_icon.to_owned());
+    return (config.idle_text.to_owned(), config.idle_image.to_owned());
+}
+
+pub fn print_data_list(config: &ProcessesConfig) -> () {
+    for (index, process) in config.processes.iter().enumerate() {
+        println!(
+            "Process {}\n\tIcon: \"{}\"\n\tText: \"{}\"\n\tName: \"{}\"",
+            index, process.image, process.text, process.name
+        );
+    }
+}
+
+#[instrument(skip_all)]
+pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> () {
+    let trace_data: CliProcessesAdd = args.clone();
+    let index: usize = config.processes.processes.len();
+
+    config.processes.processes.push(ProcessConfig {
+        image: args.image,
+        name: args.name,
+        text: args.text,
+    });
+
+    trace!("Added new process {trace_data:?} to processes list at index {index}");
+
+    write_config(config);
+}
+
+#[instrument(skip_all)]
+pub fn change_process_priority(config: &mut Config, arg: CliProcessesPriority) -> () {
+    match arg {
+        CliProcessesPriority {
+            name,
+            operation:
+                CliProcessesPriorityOperation {
+                    decrease: true,
+                    increase: false,
+                    set: None,
+                },
+        } => {
+            if let Some(index) = config
+                .processes
+                .processes
+                .iter()
+                .position(|process: &ProcessConfig| process.name == name)
+            {
+                let new_index: usize = (index as i32 + 1)
+                    .clamp(0, config.processes.processes.len() as i32 - 1)
+                    as usize;
+                trace!("Process entry {name} will be set to index {new_index}");
+
+                let process: ProcessConfig = config.processes.processes.remove(index);
+                config.processes.processes.insert(new_index, process);
+
+                println!("Set process {name} to priority {new_index}");
+            } else {
+                error!("No process named {name} found");
+            }
+        }
+        CliProcessesPriority {
+            name,
+            operation:
+                CliProcessesPriorityOperation {
+                    decrease: false,
+                    increase: true,
+                    set: None,
+                },
+        } => {
+            if let Some(index) = config
+                .processes
+                .processes
+                .iter()
+                .position(|process: &ProcessConfig| process.name == name)
+            {
+                let new_index: usize = (index as i32 - 1)
+                    .clamp(0, config.processes.processes.len() as i32 - 1)
+                    as usize;
+                trace!("Process {name} will be set to index {new_index}");
+
+                let process: ProcessConfig = config.processes.processes.remove(index);
+                config.processes.processes.insert(new_index, process);
+
+                println!("Set process {name} to priority {new_index}");
+            } else {
+                error!("No process named {name} found");
+            }
+        }
+        CliProcessesPriority {
+            name,
+            operation:
+                CliProcessesPriorityOperation {
+                    decrease: false,
+                    increase: false,
+                    set: Some(new_index),
+                },
+        } => {
+            if let Some(index) = config
+                .processes
+                .processes
+                .iter()
+                .position(|process: &ProcessConfig| process.name == name)
+            {
+                let new_index: usize = (new_index as i32)
+                    .clamp(0, config.processes.processes.len() as i32 - 1)
+                    as usize;
+                trace!("Process {name} will be set to index {new_index}");
+
+                let process: ProcessConfig = config.processes.processes.remove(index);
+                config.processes.processes.insert(new_index, process);
+
+                println!("Set process {name} to priority {new_index}");
+            } else {
+                error!("No process named {name} found");
+            }
+        }
+        CliProcessesPriority {
+            name: _,
+            operation:
+                CliProcessesPriorityOperation {
+                    decrease: false,
+                    increase: false,
+                    set: None,
+                },
+        } => error!("Enter a movement operation"),
+        _ => unreachable!("All options should be mutually exclusive"),
+    }
+    write_config(config);
+}
+
+pub fn remove_process(config: &mut Config, name: String) -> () {
+    if let Some(index) = config
+        .processes
+        .processes
+        .iter()
+        .position(|process: &ProcessConfig| process.name == name)
+    {
+        config.processes.processes.remove(index);
+
+        trace!("Removed process {name}");
+        println!("Removed process {name}");
+
+        write_config(config);
+    } else {
+        error!("No process named {name} found");
+    }
 }

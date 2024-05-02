@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 pub mod cli {
-    use crate::{config::Config, discord::*, parser::*};
+    use crate::{config::Config, discord::*, parser::*, processes::*};
     use tracing::{instrument, trace};
 
     /// Parse CLI subcommands and flags and call their respective functions.
@@ -22,7 +22,7 @@ pub mod cli {
                     if arg.daemon {
                         unimplemented!()
                     } else {
-                        get_activity_data(&config.discord);
+                        print_activity_data(&config.discord);
                     }
                 }
                 CliDiscordSubcommands::Set(args) => set_activity_data(config, args),
@@ -30,9 +30,10 @@ pub mod cli {
             },
             CliSubcommands::Kill => unimplemented!(),
             CliSubcommands::Processes(arg) => match arg.subcommands {
-                CliProcessesSubcommands::Add(_arg) => todo!(),
-                CliProcessesSubcommands::List => todo!(),
-                CliProcessesSubcommands::Remove(_arg) => todo!(),
+                CliProcessesSubcommands::Add(arg) => add_process(config, arg),
+                CliProcessesSubcommands::List => print_data_list(&config.processes),
+                CliProcessesSubcommands::Priority(arg) => change_process_priority(config, arg),
+                CliProcessesSubcommands::Remove(arg) => remove_process(config, arg.name),
                 CliProcessesSubcommands::Show => todo!(),
             },
             CliSubcommands::Ping => println!("pong"),
@@ -158,30 +159,54 @@ pub enum CliProcessesSubcommands {
     Add(CliProcessesAdd),
     #[command(about = "List all target processes")]
     List,
+    #[command(about = "Reorder target process priorities")]
+    Priority(CliProcessesPriority),
     #[command(about = "Remove a process")]
     Remove(CliProcessesRemove),
     #[command(about = "Show all active processes (may not include)")]
     Show,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 pub struct CliProcessesAdd {
     #[arg(
-        short = 'i',
-        long,
-        help = "Set the icon URL or asset name for the process"
+        index = 3,
+        help = "Set the image URL or Discord asset name for the process"
     )]
-    pub icon: String,
-    #[arg(short = 'p', long, help = "Name of the process being searched for")]
-    pub process: String,
-    #[arg(short = 't', long, help = "Set the text associated with this process")]
+    pub image: String,
+    #[arg(index = 1, help = "Name of the process being added")]
+    pub name: String,
+    #[arg(index = 2, help = "Set the text associated with this process")]
     pub text: String,
 }
 
 #[derive(Debug, Args)]
+pub struct CliProcessesPriority {
+    #[arg(help = "Name of the process entry operated on")]
+    pub name: String,
+    #[command(flatten)]
+    pub operation: CliProcessesPriorityOperation,
+}
+
+#[derive(Debug, Args)]
+#[group(multiple = false, required = true)]
+pub struct CliProcessesPriorityOperation {
+    #[arg(short = 'd', long, help = "Lowers process priority by 1")]
+    pub decrease: bool,
+    #[arg(short = 'i', long, help = "Increases process priority by 1")]
+    pub increase: bool,
+    #[arg(
+        short = 's',
+        long,
+        help = "Set process priority manually. Highest priority is 0"
+    )]
+    pub set: Option<usize>,
+}
+
+#[derive(Debug, Args)]
 pub struct CliProcessesRemove {
-    #[arg(short = 'p', long, help = "Name of the process being removed")]
-    pub process: String,
+    #[arg(help = "Name of the process being removed")]
+    pub name: String,
 }
 
 #[derive(Debug, Args)]
@@ -202,9 +227,9 @@ pub enum CliSpotifySubcommands {
 
 #[derive(Debug, Args)]
 pub struct CliSpotifyClient {
-    #[arg(short = 'i', long, help = "Set Spotify client ID")]
+    #[arg(help = "Set Spotify client ID")]
     pub id: Option<String>,
-    #[arg(short = 's', long, help = "Set Spotify client secret")]
+    #[arg(help = "Set Spotify client secret")]
     pub secret: Option<String>,
 }
 /*
