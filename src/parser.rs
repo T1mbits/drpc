@@ -6,25 +6,26 @@ pub mod cli {
 
     /// Parse CLI subcommands and flags and call their respective functions.
     #[instrument(skip_all)]
-    pub fn parse_command(config: &mut Config, args: Cli) -> Option<DiscordClientWrapper> {
+    pub fn parse_command(
+        config: &mut Config,
+        args: Cli,
+    ) -> Result<Option<DiscordClientWrapper>, ()> {
         trace!("Parsing command arguments:\n{args:#?}");
 
-        match args.subcommands {
+        return match args.subcommands {
             CliSubcommands::Discord(arg) => match arg.subcommands {
                 CliDiscordSubcommands::Connect => {
-                    return Some(set_activity(
-                        client_init(config.discord.client_id.to_owned()),
-                        config,
-                    ))
-                }
-                CliDiscordSubcommands::Disconnect => todo!(),
-                CliDiscordSubcommands::Get(arg) => {
-                    if arg.daemon {
-                        unimplemented!()
-                    } else {
-                        print_activity_data(&config.discord);
+                    match client_init(config.discord.client_id.to_owned()) {
+                        Err(_) => Err(()),
+                        Ok(client) => match set_activity(client, config) {
+                            Err(_) => Err(()),
+                            Ok(client) => Ok(Some(client)),
+                        },
                     }
                 }
+                CliDiscordSubcommands::Disconnect => unimplemented!(),
+                CliDiscordSubcommands::Get(_arg) => print_activity_data(&config.discord),
+
                 CliDiscordSubcommands::Set(args) => set_activity_data(config, args),
                 CliDiscordSubcommands::Update => unimplemented!(),
             },
@@ -36,8 +37,11 @@ pub mod cli {
                 CliProcessesSubcommands::Remove(arg) => remove_process(config, arg.name),
                 CliProcessesSubcommands::Show => todo!(),
             },
-            CliSubcommands::Ping => println!("pong"),
-            CliSubcommands::Refresh => todo!(),
+            CliSubcommands::Ping => {
+                println!("pong");
+                Ok(None)
+            }
+            CliSubcommands::Refresh => unimplemented!(),
             CliSubcommands::Spotify(arg) => match arg.subcommands {
                 CliSpotifySubcommands::Add => todo!(),
                 CliSpotifySubcommands::Client(arg) => {
@@ -47,12 +51,12 @@ pub mod cli {
                     if arg.secret.is_some() {
                         todo!()
                     };
+                    unimplemented!();
                 }
                 CliSpotifySubcommands::Remove => todo!(),
             },
             CliSubcommands::Start => unimplemented!(),
         };
-        return None;
     }
 }
 
@@ -81,7 +85,7 @@ pub enum CliSubcommands {
     Kill,
     #[command(about = "Prints pong. Good for testing loggers and config file setups")]
     Ping,
-    #[command(about = "Add or remove processes from detection list\nunimplemented")]
+    #[command(about = "Manipulate target processes")]
     Processes(CliProcesses),
     #[command(about = "unimplemented")]
     Refresh,

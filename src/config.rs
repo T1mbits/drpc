@@ -1,7 +1,7 @@
-use crate::discord::replace_template_variables;
+use crate::discord::{replace_template_variables, DiscordClientWrapper};
 use dirs::config_dir;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::Path, process};
+use std::{collections::HashMap, fs, path::Path};
 use toml::{from_str, to_string};
 use tracing::{debug, error, instrument, trace, warn};
 
@@ -23,7 +23,7 @@ fn file_path() -> String {
 
 /// Deserialize or create a new `Config` struct.
 #[instrument(skip_all)]
-pub fn initialize_config(overwrite: bool) -> Config {
+pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
     let file_path: &str = &file_path();
     debug!("Config file path: {file_path}");
     if Path::new(file_path).exists() {
@@ -31,21 +31,23 @@ pub fn initialize_config(overwrite: bool) -> Config {
         return match read_config_file(overwrite) {
             Err(_) => {
                 error!("Invalid configuration file found. Use --config-overwrite to overwrite the invalid config file with default values.");
-                process::exit(1)
+                Err(())
             }
-            Ok(config) => config,
+            Ok(config) => Ok(config),
         };
     } else {
         warn!("Config file not found, creating new file with defaults");
         let default = Config::default();
-        write_config(&default);
-        return default;
+        return match write_config(&default) {
+            Err(_) => Err(()),
+            Ok(_) => Ok(default),
+        };
     }
 }
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config(config: &Config) -> () {
+pub fn write_config(config: &Config) -> Result<Option<DiscordClientWrapper>, ()> {
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
@@ -56,7 +58,7 @@ pub fn write_config(config: &Config) -> () {
         }
         Err(error) => {
             error!("Error while serializing config data: {error}");
-            process::exit(1);
+            return Err(());
         }
     };
 
@@ -64,19 +66,22 @@ pub fn write_config(config: &Config) -> () {
         match fs::create_dir_all(&config_dir) {
             Err(error) => {
                 error!("Error while creating config directory: {error}");
-                process::exit(1)
+                return Err(());
             }
             Ok(_) => trace!("Created config directory {config_dir}"),
         }
     }
 
-    match fs::write(&config_file, serialized_config) {
-        Ok(_) => trace!("Wrote to file {config_file}"),
+    return match fs::write(&config_file, serialized_config) {
+        Ok(_) => {
+            trace!("Wrote to file {config_file}");
+            Ok(None)
+        }
         Err(error) => {
             error!("Error while writing config: {error}");
-            process::exit(1);
+            Err(())
         }
-    }
+    };
 }
 
 /// Attempt to read and deserialize config from file. If an error occurs while deserializing, a default `Config` will be created.<br/>
@@ -84,16 +89,16 @@ pub fn write_config(config: &Config) -> () {
 #[instrument(skip_all)]
 pub fn read_config_file(overwrite: bool) -> Result<Config, ()> {
     let config_path: String = file_path();
-    match fs::read(&config_path) {
+    return match fs::read(&config_path) {
         Ok(config_vector) => {
             debug!("Successfully read config file from {config_path}");
             verify_config_integrity(config_vector, config_path, overwrite)
         }
         Err(error) => {
             error!("Error while reading config at {config_path}: {error}");
-            process::exit(1);
+            Err(())
         }
-    }
+    };
 }
 
 /// Deserialize string into `Config`. If an error occurs while deserializing, a default `Config` will be created.
@@ -107,10 +112,10 @@ fn verify_config_integrity(
     let config_string: String = match String::from_utf8(config_vector) {
         Err(error) => {
             error!("Error while converting config to utf8: {error}");
-            process::exit(1)
+            return Err(());
         }
         Ok(decoded_string) => {
-            trace!("Successfully converted config file to utf8");
+            trace!("Successfully converted config file to utf8:\n{decoded_string}");
             decoded_string
         }
     };
@@ -118,18 +123,21 @@ fn verify_config_integrity(
     return match from_str(&config_string) {
         Err(error) => {
             warn!("Error while deserializing configuration file: {error}");
+            trace!("Overwrite: {overwrite}");
             if !overwrite {
                 return Err(());
             }
             match fs::remove_file(config_path) {
                 Ok(_) => {
                     warn!("Removed invalid configuration file, creating new file with defaults");
-                    write_config(&Config::default());
-                    Ok(Config::default())
+                    match write_config(&Config::default()) {
+                        Err(_) => Err(()),
+                        Ok(_) => Ok(Config::default()),
+                    }
                 }
                 Err(error) => {
                     error!("Error while removing invalid configuration file: {error}");
-                    process::exit(1);
+                    Err(())
                 }
             }
         }

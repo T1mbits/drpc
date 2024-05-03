@@ -1,5 +1,6 @@
 use crate::{
     config::{write_config, Config, ProcessConfig, ProcessesConfig},
+    discord::DiscordClientWrapper,
     parser::{CliProcessesAdd, CliProcessesPriority, CliProcessesPriorityOperation},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
@@ -42,17 +43,21 @@ pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (St
     return (config.idle_text.to_owned(), config.idle_image.to_owned());
 }
 
-pub fn print_data_list(config: &ProcessesConfig) -> () {
+pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<DiscordClientWrapper>, ()> {
     for (index, process) in config.processes.iter().enumerate() {
         println!(
             "Process {}\n\tIcon: \"{}\"\n\tText: \"{}\"\n\tName: \"{}\"",
             index, process.image, process.text, process.name
         );
     }
+    return Ok(None);
 }
 
 #[instrument(skip_all)]
-pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> () {
+pub fn add_process(
+    config: &mut Config,
+    args: CliProcessesAdd,
+) -> Result<Option<DiscordClientWrapper>, ()> {
     let trace_data: CliProcessesAdd = args.clone();
     let index: usize = config.processes.processes.len();
 
@@ -64,12 +69,30 @@ pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> () {
 
     trace!("Added new process {trace_data:?} to processes list at index {index}");
 
-    write_config(config);
+    return write_config(config);
 }
 
 #[instrument(skip_all)]
-pub fn change_process_priority(config: &mut Config, arg: CliProcessesPriority) -> () {
-    match arg {
+pub fn change_process_priority(
+    config: &mut Config,
+    arg: CliProcessesPriority,
+) -> Result<Option<DiscordClientWrapper>, ()> {
+    fn set_index(
+        config: &mut Config,
+        name: String,
+        old_index: usize,
+        new_index: usize,
+    ) -> Result<Option<DiscordClientWrapper>, ()> {
+        trace!("Process {name} will be set to index {new_index}");
+
+        let process: ProcessConfig = config.processes.processes.remove(old_index);
+        config.processes.processes.insert(new_index, process);
+
+        println!("Set process {name} to priority {new_index}");
+        return write_config(config);
+    }
+
+    return match arg {
         CliProcessesPriority {
             name,
             operation:
@@ -88,14 +111,10 @@ pub fn change_process_priority(config: &mut Config, arg: CliProcessesPriority) -
                 let new_index: usize = (index as i32 + 1)
                     .clamp(0, config.processes.processes.len() as i32 - 1)
                     as usize;
-                trace!("Process entry {name} will be set to index {new_index}");
-
-                let process: ProcessConfig = config.processes.processes.remove(index);
-                config.processes.processes.insert(new_index, process);
-
-                println!("Set process {name} to priority {new_index}");
+                set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
+                Err(())
             }
         }
         CliProcessesPriority {
@@ -116,14 +135,10 @@ pub fn change_process_priority(config: &mut Config, arg: CliProcessesPriority) -
                 let new_index: usize = (index as i32 - 1)
                     .clamp(0, config.processes.processes.len() as i32 - 1)
                     as usize;
-                trace!("Process {name} will be set to index {new_index}");
-
-                let process: ProcessConfig = config.processes.processes.remove(index);
-                config.processes.processes.insert(new_index, process);
-
-                println!("Set process {name} to priority {new_index}");
+                set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
+                Err(())
             }
         }
         CliProcessesPriority {
@@ -144,31 +159,20 @@ pub fn change_process_priority(config: &mut Config, arg: CliProcessesPriority) -
                 let new_index: usize = (new_index as i32)
                     .clamp(0, config.processes.processes.len() as i32 - 1)
                     as usize;
-                trace!("Process {name} will be set to index {new_index}");
-
-                let process: ProcessConfig = config.processes.processes.remove(index);
-                config.processes.processes.insert(new_index, process);
-
-                println!("Set process {name} to priority {new_index}");
+                set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
+                Err(())
             }
         }
-        CliProcessesPriority {
-            name: _,
-            operation:
-                CliProcessesPriorityOperation {
-                    decrease: false,
-                    increase: false,
-                    set: None,
-                },
-        } => error!("Enter a movement operation"),
-        _ => unreachable!("All options should be mutually exclusive"),
-    }
-    write_config(config);
+        _ => unreachable!("An operation is required and all are mutually exclusive"),
+    };
 }
 
-pub fn remove_process(config: &mut Config, name: String) -> () {
+pub fn remove_process(
+    config: &mut Config,
+    name: String,
+) -> Result<Option<DiscordClientWrapper>, ()> {
     if let Some(index) = config
         .processes
         .processes
@@ -180,8 +184,9 @@ pub fn remove_process(config: &mut Config, name: String) -> () {
         trace!("Removed process {name}");
         println!("Removed process {name}");
 
-        write_config(config);
+        return write_config(config);
     } else {
         error!("No process named {name} found");
+        return Err(());
     }
 }

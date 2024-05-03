@@ -11,25 +11,37 @@ use config::{
 };
 use discord::update_activity;
 use parser::{cli::parse_command, Cli};
+use std::process::ExitCode;
 use tracing::{debug, trace, Level};
 // use tracing_appender::rolling;
 use tracing_subscriber::fmt;
 
-fn main() -> () {
+fn main() -> ExitCode {
     let args: Cli = Cli::parse();
     log_setup(args.debug, args.verbose);
 
-    let mut config: Config = initialize_config(args.config_overwrite);
+    let mut config: Config = match initialize_config(args.config_overwrite) {
+        Err(_) => return ExitCode::FAILURE,
+        Ok(config) => config,
+    };
     trace!("Config:\n{config:#?}");
 
-    if let Some(mut client) = parse_command(&mut config, args) {
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(3));
-            client = update_activity(&mut config, client);
-        }
-    }
+    return match parse_command(&mut config, args) {
+        Err(_) => ExitCode::FAILURE,
+        Ok(result) => {
+            if let Some(mut client) = result {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    client = match update_activity(&mut config, client) {
+                        Err(_) => return ExitCode::FAILURE,
 
-    return ();
+                        Ok(client) => client,
+                    }
+                }
+            }
+            ExitCode::SUCCESS
+        }
+    };
 }
 
 /// Initializes logging subscriber defaults. If `debug` is true, log level will be `debug`. If `verbose` is true, log level will be `trace`. Otherwise, log level will be `info`.
@@ -50,8 +62,8 @@ pub fn log_setup(debug: bool, verbose: bool) -> () {
             .with_max_level(if verbose { Level::TRACE } else { Level::DEBUG })
             .init();
 
-        debug!("Debug logger initialized");
-        trace!("Trace logger initialized");
+        debug!("Debug level");
+        trace!("Trace level");
         return;
     }
     // let log_files = rolling::never(dir_path() + "logs/", "ddrpc.log");
