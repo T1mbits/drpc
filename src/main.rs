@@ -2,6 +2,7 @@ pub mod config;
 pub mod discord;
 pub mod parser;
 pub mod processes;
+pub mod spotify;
 
 use clap::Parser;
 use config::{
@@ -16,7 +17,10 @@ use tracing::{debug, trace, Level};
 // use tracing_appender::rolling;
 use tracing_subscriber::fmt;
 
-fn main() -> ExitCode {
+use crate::spotify::generate_client;
+
+#[tokio::main]
+async fn main() -> ExitCode {
     let args: Cli = Cli::parse();
     log_setup(args.debug, args.verbose);
 
@@ -25,6 +29,8 @@ fn main() -> ExitCode {
         Ok(config) => config,
     };
     trace!("Config:\n{config:#?}");
+
+    generate_client(&mut config).await.unwrap();
 
     return match parse_command(&mut config, args) {
         Err(_) => ExitCode::FAILURE,
