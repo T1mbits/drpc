@@ -31,7 +31,7 @@ pub fn get_names(config: &ProcessesConfig) -> Vec<String> {
 #[instrument(skip_all)]
 pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (String, String) {
     for target_process in &config.processes {
-        if processes[0] == target_process.name {
+        if processes.first() == Some(&target_process.name) {
             trace!("Process chosen:\n{target_process:#?}");
             return (
                 target_process.text.to_owned(),
