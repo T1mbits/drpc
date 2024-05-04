@@ -1,9 +1,11 @@
-use crate::discord::{replace_template_variables, DiscordClientWrapper};
+use crate::{
+    discord::{replace_template_variables, DiscordClientWrapper},
+    prelude::*,
+};
 use dirs::config_dir;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
 use toml::{from_str, to_string};
-use tracing::{debug, error, instrument, trace, warn};
 
 /// Creates path to config directory specific to OS. A slash is appended to the end of the path
 pub fn dir_path() -> String {

@@ -1,11 +1,10 @@
 use crate::{
-    config::{read_config_file, write_config, Config, DiscordConfig},
     parser::CliDiscordSet,
+    prelude::*,
     processes::{get_active_data, get_names},
 };
 use discord_rich_presence::{activity::*, DiscordIpc, DiscordIpcClient};
 use std::collections::HashMap;
-use tracing::{debug, error, info, instrument, trace, warn};
 
 /// Bundle DiscordIpcClient and the Discord activity data associated to it.
 pub struct DiscordClientWrapper {

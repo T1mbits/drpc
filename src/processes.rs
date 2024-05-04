@@ -1,10 +1,9 @@
 use crate::{
-    config::{write_config, Config, ProcessConfig, ProcessesConfig},
     discord::DiscordClientWrapper,
     parser::{CliProcessesAdd, CliProcessesPriority, CliProcessesPriorityOperation},
+    prelude::*,
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-use tracing::{error, instrument, trace};
 
 /// Creates a vector of all found target processes. Processes are searched for by process name from `ProcessesConfig`.
 #[instrument(skip_all)]

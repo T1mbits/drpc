@@ -3,16 +3,17 @@ pub mod discord;
 pub mod parser;
 pub mod processes;
 
+pub mod prelude {
+    pub use crate::config::*;
+    pub use tracing::{debug, error, info, instrument, trace, warn};
+}
+
 use clap::Parser;
-use config::{
-    // dir_path,
-    initialize_config,
-    Config,
-};
 use discord::update_activity;
 use parser::{cli::parse_command, Cli};
+use prelude::*;
 use std::process::ExitCode;
-use tracing::{debug, trace, Level};
+use tracing::Level;
 // use tracing_appender::rolling;
 use tracing_subscriber::fmt;
 
