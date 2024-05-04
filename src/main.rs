@@ -15,9 +15,8 @@ use parser::{cli::parse_command, Cli};
 use std::process::ExitCode;
 use tracing::{debug, trace, Level};
 // use tracing_appender::rolling;
+use spotify::client_init;
 use tracing_subscriber::fmt;
-
-use crate::spotify::generate_client;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -30,7 +29,7 @@ async fn main() -> ExitCode {
     };
     trace!("Config:\n{config:#?}");
 
-    generate_client(&mut config).await.unwrap();
+    client_init(&mut config).await.unwrap();
 
     return match parse_command(&mut config, args) {
         Err(_) => ExitCode::FAILURE,
