@@ -1,4 +1,4 @@
-use crate::discord::{replace_template_variables, DiscordClientWrapper};
+use crate::discord::{replace_template_variables, ClientBundle};
 use dirs::config_dir;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
@@ -47,7 +47,7 @@ pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config(config: &Config) -> Result<Option<DiscordClientWrapper>, ()> {
+pub fn write_config(config: &Config) -> Result<Option<ClientBundle>, ()> {
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 

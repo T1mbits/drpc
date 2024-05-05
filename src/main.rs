@@ -31,13 +31,13 @@ async fn main() -> ExitCode {
 
     client_init(&mut config).await.unwrap();
 
-    return match parse_command(&mut config, args) {
+    return match parse_command(&mut config, args).await {
         Err(_) => ExitCode::FAILURE,
         Ok(result) => {
             if let Some(mut client) = result {
                 loop {
                     std::thread::sleep(std::time::Duration::from_secs(3));
-                    client = match update_activity(&mut config, client) {
+                    client = match update_activity(&mut config, client).await {
                         Err(_) => return ExitCode::FAILURE,
 
                         Ok(client) => client,

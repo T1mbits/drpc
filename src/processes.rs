@@ -1,6 +1,6 @@
 use crate::{
     config::{write_config, Config, ProcessConfig, ProcessesConfig},
-    discord::DiscordClientWrapper,
+    discord::ClientBundle,
     parser::{CliProcessesAdd, CliProcessesPriority, CliProcessesPriorityOperation},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
@@ -43,7 +43,7 @@ pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (St
     return (config.idle_text.to_owned(), config.idle_image.to_owned());
 }
 
-pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<DiscordClientWrapper>, ()> {
+pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<ClientBundle>, ()> {
     for (index, process) in config.processes.iter().enumerate() {
         println!(
             "Process {}\n\tIcon: \"{}\"\n\tText: \"{}\"\n\tName: \"{}\"",
@@ -54,10 +54,7 @@ pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<DiscordClientW
 }
 
 #[instrument(skip_all)]
-pub fn add_process(
-    config: &mut Config,
-    args: CliProcessesAdd,
-) -> Result<Option<DiscordClientWrapper>, ()> {
+pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> Result<Option<ClientBundle>, ()> {
     let trace_data: CliProcessesAdd = args.clone();
     let index: usize = config.processes.processes.len();
 
@@ -76,13 +73,13 @@ pub fn add_process(
 pub fn change_process_priority(
     config: &mut Config,
     arg: CliProcessesPriority,
-) -> Result<Option<DiscordClientWrapper>, ()> {
+) -> Result<Option<ClientBundle>, ()> {
     fn set_index(
         config: &mut Config,
         name: String,
         old_index: usize,
         new_index: usize,
-    ) -> Result<Option<DiscordClientWrapper>, ()> {
+    ) -> Result<Option<ClientBundle>, ()> {
         trace!("Process {name} will be set to index {new_index}");
 
         let process: ProcessConfig = config.processes.processes.remove(old_index);
@@ -169,10 +166,7 @@ pub fn change_process_priority(
     };
 }
 
-pub fn remove_process(
-    config: &mut Config,
-    name: String,
-) -> Result<Option<DiscordClientWrapper>, ()> {
+pub fn remove_process(config: &mut Config, name: String) -> Result<Option<ClientBundle>, ()> {
     if let Some(index) = config
         .processes
         .processes

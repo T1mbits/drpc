@@ -13,7 +13,7 @@ use tracing::{debug, error, instrument, trace};
 pub struct TrackData {
     pub album_name: String,
     pub album_cover_url: String,
-    pub artists: Vec<String>,
+    pub artists: String,
     pub name: String,
     pub track_url: String,
 }
@@ -28,26 +28,19 @@ pub async fn client_init(config: &mut Config) -> Result<AuthCodeSpotify, ()> {
         scopes: scopes!("user-read-currently-playing"),
         proxies: None,
     };
-    let mut spotify = AuthCodeSpotify::new(credentials, oauth);
+    let mut client = AuthCodeSpotify::new(credentials, oauth);
 
-    match authorize(config, &mut spotify).await {
+    match authorize(config, &mut client).await {
         Err(_) => return Err(()),
         _ => (),
     }
 
-    config.spotify.refresh_token = match extract_refresh_token(&spotify).await {
-        Err(_) => return Err(()),
-        Ok(refresh_token) => refresh_token,
-    };
-
-    match write_config(config) {
+    match save_refresh_token(config, &client).await {
         Err(_) => return Err(()),
         _ => (),
     };
 
-    trace!("{:#?}", currently_playing_track(&spotify).await);
-
-    return Ok(spotify);
+    return Ok(client);
 }
 
 #[instrument(skip_all)]
@@ -86,7 +79,7 @@ async fn authorize(config: &mut Config, client: &mut AuthCodeSpotify) -> Result<
 }
 
 #[instrument(skip_all)]
-async fn extract_refresh_token(client: &AuthCodeSpotify) -> Result<String, ()> {
+async fn save_refresh_token(config: &mut Config, client: &AuthCodeSpotify) -> Result<(), ()> {
     trace!("Attempting to extract token");
 
     let token_mutex = client.get_token();
@@ -103,15 +96,22 @@ async fn extract_refresh_token(client: &AuthCodeSpotify) -> Result<String, ()> {
                 unreachable!("Refresh token should always be available if this function is called")
             }
             Some(refresh_token) => {
-                trace!("{refresh_token:?}");
-                Ok(refresh_token.to_owned())
+                trace!("Spotify refresh token: {refresh_token:?}");
+                config.spotify.refresh_token = refresh_token.to_owned();
+
+                match write_config(config) {
+                    Err(_) => Err(()),
+                    Ok(_) => Ok(()),
+                }
             }
         },
     };
 }
 
 #[instrument(skip_all)]
-pub async fn currently_playing_track(client: &AuthCodeSpotify) -> Result<Option<TrackData>, ()> {
+pub async fn get_currently_playing_track(
+    client: &AuthCodeSpotify,
+) -> Result<Option<TrackData>, ()> {
     match client
         .current_playing(None, Some(&[AdditionalType::Track]))
         .await
@@ -123,9 +123,13 @@ pub async fn currently_playing_track(client: &AuthCodeSpotify) -> Result<Option<
         Ok(context) => match context {
             Some(context) if context.is_playing => {
                 if let Some(PlayableItem::Track(track)) = context.item {
-                    let mut artists: Vec<String> = Vec::new();
-                    for artist in track.artists {
-                        artists.push(artist.name);
+                    let mut artists: String = String::new();
+                    for (index, artist) in track.artists.iter().enumerate() {
+                        if index == 0 {
+                            artists.push_str(&artist.name);
+                        } else {
+                            artists.push_str(&format!(", {}", artist.name))
+                        }
                     }
 
                     let track_url = match track.external_urls.get_key_value("spotify") {

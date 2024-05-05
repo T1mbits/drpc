@@ -6,23 +6,18 @@ pub mod cli {
 
     /// Parse CLI subcommands and flags and call their respective functions.
     #[instrument(skip_all)]
-    pub fn parse_command(
-        config: &mut Config,
-        args: Cli,
-    ) -> Result<Option<DiscordClientWrapper>, ()> {
+    pub async fn parse_command(config: &mut Config, args: Cli) -> Result<Option<ClientBundle>, ()> {
         trace!("Parsing command arguments:\n{args:#?}");
 
         return match args.subcommands {
             CliSubcommands::Discord(arg) => match arg.subcommands {
-                CliDiscordSubcommands::Connect => {
-                    match client_init(config.discord.client_id.to_owned()) {
+                CliDiscordSubcommands::Connect => match client_init(config).await {
+                    Err(_) => Err(()),
+                    Ok(client) => match set_activity(client, config).await {
                         Err(_) => Err(()),
-                        Ok(client) => match set_activity(client, config) {
-                            Err(_) => Err(()),
-                            Ok(client) => Ok(Some(client)),
-                        },
-                    }
-                }
+                        Ok(client) => Ok(Some(client)),
+                    },
+                },
                 CliDiscordSubcommands::Disconnect => unimplemented!(),
                 CliDiscordSubcommands::Get(_arg) => print_activity_data(&config.discord),
 
