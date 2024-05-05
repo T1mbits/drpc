@@ -2,7 +2,7 @@ use crate::{
     config::{read_config_file, write_config, Config, DiscordConfig},
     parser::CliDiscordSet,
     processes::{get_active_data, get_names},
-    spotify::{self, get_currently_playing_track},
+    spotify::{self, get_currently_playing_track, TrackData},
 };
 use discord_rich_presence::{activity::*, DiscordIpc, DiscordIpcClient};
 use rspotify::AuthCodeSpotify;
@@ -114,27 +114,31 @@ pub async fn client_init(config: &mut Config) -> Result<ClientBundle, ()> {
 
     return Ok(ClientBundle {
         discord: client,
-        replaced_data: DiscordConfig::default(),
+        replaced_data: DiscordConfig::new(0),
         spotify: spotify_client,
     });
 }
 
 /// Create the hashmap for template variables and their replacements in Discord data.
 #[instrument(skip_all)]
-async fn template_hashmap<'a>(
-    config: &'a Config,
+async fn template_hashmap<'th>(
+    config: &Config,
     client: &AuthCodeSpotify,
-) -> HashMap<&'a str, String> {
+) -> HashMap<&'th str, String> {
     let processes = get_names(&config.processes);
 
     let (process_text, process_icon) = get_active_data(&config.processes, &processes);
-    let track = get_currently_playing_track(client).await.unwrap().unwrap();
+    let track = match get_currently_playing_track(client).await.unwrap() {
+        None => TrackData::fallback(&config.spotify.fallback),
+        Some(track_data) => track_data,
+    };
 
     let mut replace_hashmap: HashMap<&str, String> = HashMap::new();
     replace_hashmap.insert("process.icon", process_icon);
     replace_hashmap.insert("process.text", process_text);
     replace_hashmap.insert("idle.icon", config.processes.idle_image.to_owned());
     replace_hashmap.insert("idle.text", config.processes.idle_text.to_owned());
+
     replace_hashmap.insert("spotify.track.name", track.name);
     replace_hashmap.insert("spotify.track.artists", track.artists);
     replace_hashmap.insert("spotify.track.url", track.track_url);
@@ -155,10 +159,13 @@ pub fn replace_template_variables(
         trace!("String does not contain template variables");
         return string;
     }
+
+    // let nestable_template_variables = vec!["spotify"];
+
     for (target, replacement) in template_hashmap {
         let target = format!("{{{{{}}}}}", target);
         // trace!("Replacing template variable \"{target}\" with \"{replacement}\"");
-        string = string.replace(&target, replacement)
+        string = string.replace(&target, replacement);
     }
 
     return string;
@@ -175,6 +182,9 @@ pub async fn set_activity(
     trace!("Discord data cloned");
 
     let template_hashmap: HashMap<&str, String> = template_hashmap(config, &bundle.spotify).await;
+
+    info!("{template_hashmap:#?}");
+
     replaced_data.replace_templates(&template_hashmap);
 
     if replaced_data == bundle.replaced_data {

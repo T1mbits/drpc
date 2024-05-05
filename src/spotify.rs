@@ -1,4 +1,4 @@
-use crate::config::{write_config, Config};
+use crate::config::{write_config, Config, SpotifyFallbackConfig};
 use rspotify::{
     clients::{BaseClient, OAuthClient},
     model::{AdditionalType, PlayableItem},
@@ -8,15 +8,6 @@ use rspotify::{
 };
 use std::sync::Arc;
 use tracing::{debug, error, instrument, trace};
-
-#[derive(Debug)]
-pub struct TrackData {
-    pub album_name: String,
-    pub album_cover_url: String,
-    pub artists: String,
-    pub name: String,
-    pub track_url: String,
-}
 
 #[instrument(skip_all)]
 pub async fn client_init(config: &mut Config) -> Result<AuthCodeSpotify, ()> {
@@ -149,5 +140,26 @@ pub async fn get_currently_playing_track(
             }
             _ => return Ok(None),
         },
+    }
+}
+
+#[derive(Debug)]
+pub struct TrackData {
+    pub album_name: String,
+    pub album_cover_url: String,
+    pub artists: String,
+    pub name: String,
+    pub track_url: String,
+}
+
+impl TrackData {
+    pub fn fallback(config: &SpotifyFallbackConfig) -> Self {
+        return Self {
+            album_name: config.album_name.to_owned(),
+            album_cover_url: config.album_cover_url.to_owned(),
+            artists: config.artists.to_owned(),
+            name: config.name.to_owned(),
+            track_url: config.track_url.to_owned(),
+        };
     }
 }
