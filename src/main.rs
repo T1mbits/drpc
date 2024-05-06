@@ -2,6 +2,7 @@ pub mod config;
 pub mod discord;
 pub mod parser;
 pub mod processes;
+pub mod spotify;
 
 pub mod prelude {
     pub use crate::config::*;
@@ -15,9 +16,11 @@ use prelude::*;
 use std::process::ExitCode;
 use tracing::Level;
 // use tracing_appender::rolling;
+use spotify::client_init;
 use tracing_subscriber::fmt;
 
-fn main() -> ExitCode {
+#[tokio::main]
+async fn main() -> ExitCode {
     let args: Cli = Cli::parse();
     log_setup(args.debug, args.verbose);
 
@@ -27,13 +30,15 @@ fn main() -> ExitCode {
     };
     trace!("Config:\n{config:#?}");
 
-    return match parse_command(&mut config, args) {
+    client_init(&mut config).await.unwrap();
+
+    return match parse_command(&mut config, args).await {
         Err(_) => ExitCode::FAILURE,
         Ok(result) => {
             if let Some(mut client) = result {
                 loop {
                     std::thread::sleep(std::time::Duration::from_secs(3));
-                    client = match update_activity(&mut config, client) {
+                    client = match update_activity(&mut config, client).await {
                         Err(_) => return ExitCode::FAILURE,
 
                         Ok(client) => client,

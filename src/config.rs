@@ -1,5 +1,5 @@
 use crate::{
-    discord::{replace_template_variables, DiscordClientWrapper},
+    discord::{replace_template_variables, ClientBundle},
     prelude::*,
 };
 use dirs::config_dir;
@@ -49,7 +49,7 @@ pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config(config: &Config) -> Result<Option<DiscordClientWrapper>, ()> {
+pub fn write_config(config: &Config) -> Result<Option<ClientBundle>, ()> {
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
@@ -160,36 +160,27 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            discord: DiscordConfig {
-                assets: DiscordConfigAssets {
-                    large_image: "".to_string(),
-                    large_text: "".to_string(),
-                    small_image: "".to_string(),
-                    small_text: "".to_string(),
-                },
-                buttons: DiscordButtons {
-                    btn1_text: "".to_string(),
-                    btn1_url: "".to_string(),
-                    btn2_text: "".to_string(),
-                    btn2_url: "".to_string(),
-                },
-                client_id: 1133837522074607749,
-                details: "".to_string(),
-                state: "".to_string(),
-            },
+            discord: DiscordConfig::new(1133837522074607749),
             processes: ProcessesConfig {
-                idle_image: "idle".to_string(),
-                idle_text: "Idle".to_string(),
+                idle_image: String::from("idle"),
+                idle_text: String::from("Idle"),
                 processes: vec![ProcessConfig {
-                    image: "code".to_string(),
-                    name: "code".to_string(),
-                    text: "Visual Studio Code".to_string(),
+                    image: String::from("code"),
+                    name: String::from("code"),
+                    text: String::from("Visual Studio Code"),
                 }],
             },
             spotify: SpotifyConfig {
-                client_id: "".to_string(),
-                client_secret: "".to_string(),
-                refresh_token: "".to_string(),
+                client_id: String::new(),
+                client_secret: String::new(),
+                fallback: SpotifyFallbackConfig {
+                    album_cover_url: String::new(),
+                    album_name: String::new(),
+                    artists: String::new(),
+                    name: String::new(),
+                    track_url: String::new(),
+                },
+                refresh_token: String::new(),
             },
         }
     }
@@ -204,25 +195,25 @@ pub struct DiscordConfig {
     pub details: String,
 }
 
-impl Default for DiscordConfig {
-    fn default() -> Self {
-        DiscordConfig {
+impl DiscordConfig {
+    pub fn new(client_id: u64) -> Self {
+        return Self {
             assets: DiscordConfigAssets {
-                large_image: "".to_owned(),
-                large_text: "".to_owned(),
-                small_image: "".to_owned(),
-                small_text: "".to_owned(),
+                large_image: String::new(),
+                large_text: String::new(),
+                small_image: String::new(),
+                small_text: String::new(),
             },
             buttons: DiscordButtons {
-                btn1_text: "".to_owned(),
-                btn1_url: "".to_owned(),
-                btn2_text: "".to_owned(),
-                btn2_url: "".to_owned(),
+                btn1_text: String::new(),
+                btn1_url: String::new(),
+                btn2_text: String::new(),
+                btn2_url: String::new(),
             },
-            client_id: 0,
-            details: "".to_owned(),
-            state: "".to_owned(),
-        }
+            client_id,
+            details: String::new(),
+            state: String::new(),
+        };
     }
 }
 
@@ -299,7 +290,18 @@ impl DiscordButtons {
 pub struct SpotifyConfig {
     pub client_id: String,
     pub client_secret: String,
+    pub fallback: SpotifyFallbackConfig,
     pub refresh_token: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SpotifyFallbackConfig {
+    pub album_name: String,
+    #[serde(alias = "album_cover")]
+    pub album_cover_url: String,
+    pub artists: String,
+    pub name: String,
+    pub track_url: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

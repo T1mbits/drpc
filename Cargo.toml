@@ -9,9 +9,10 @@ edition = "2021"
 clap = { version = "4.5.1", features = ["derive"] }
 dirs = "5.0.1"
 discord-rich-presence = "0.2.3"
-rspotify = "0.12.0"
+rspotify = { version = "0.12.0", features = ["cli"] }
 serde = "1.0.197"
 sysinfo = "0.30.11"
+tokio = { version = "1.37.0", features = ["full"] }
 toml = "0.8.10"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
