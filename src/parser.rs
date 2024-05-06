@@ -1,8 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 pub mod cli {
-    use crate::{config::Config, discord::*, parser::*, processes::*};
-    use tracing::{instrument, trace};
+    use crate::{discord::*, parser::*, prelude::*, processes::*};
 
     /// Parse CLI subcommands and flags and call their respective functions.
     #[instrument(skip_all)]
