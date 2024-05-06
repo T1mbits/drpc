@@ -1,7 +1,4 @@
-use crate::{
-    discord::{replace_template_variables, ClientBundle},
-    prelude::*,
-};
+use crate::{discord::ClientBundle, parser::variables::replace_template_variables, prelude::*};
 use dirs::config_dir;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
