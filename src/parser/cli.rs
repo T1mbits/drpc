@@ -17,15 +17,17 @@ pub async fn parse_command(config: &mut Config, args: Cli) -> Result<Option<Clie
             CliDiscordSubcommands::Disconnect => unimplemented!(),
             CliDiscordSubcommands::Get(_arg) => print_activity_data(&config.discord),
 
-            CliDiscordSubcommands::Set(args) => set_activity_data(config, args),
+            CliDiscordSubcommands::Set(args) => set_activity_data(&mut config.discord, args),
             CliDiscordSubcommands::Update => unimplemented!(),
         },
         CliSubcommands::Kill => unimplemented!(),
         CliSubcommands::Processes(arg) => match arg.subcommands {
-            CliProcessesSubcommands::Add(arg) => add_process(config, arg),
+            CliProcessesSubcommands::Add(arg) => add_process(&mut config.processes, arg),
             CliProcessesSubcommands::List => print_data_list(&config.processes),
-            CliProcessesSubcommands::Priority(arg) => change_process_priority(config, arg),
-            CliProcessesSubcommands::Remove(arg) => remove_process(config, arg.name),
+            CliProcessesSubcommands::Priority(arg) => {
+                change_process_priority(&mut config.processes, arg)
+            }
+            CliProcessesSubcommands::Remove(arg) => remove_process(&mut config.processes, arg.name),
             CliProcessesSubcommands::Show => todo!(),
         },
         CliSubcommands::Ping => {

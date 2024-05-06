@@ -36,50 +36,50 @@ pub fn print_activity_data(config: &DiscordConfig) -> Result<Option<ClientBundle
 /// Overwrite Discord data in `Config` and write to file.
 #[instrument(skip_all)]
 pub fn set_activity_data(
-    config: &mut Config,
+    config: &mut DiscordConfig,
     arg: CliDiscordSet,
 ) -> Result<Option<ClientBundle>, ()> {
     trace!("Overwriting with:\n{arg:#?}");
 
     if let Some(id) = arg.client_id {
-        config.discord.client_id = id
+        config.client_id = id
     }
     if let Some(details) = arg.details {
-        config.discord.details = details
+        config.details = details
     }
-    if !config.discord.assets.is_empty() {
+    if !config.assets.is_empty() {
         if let Some(lik) = arg.large_image {
-            config.discord.assets.large_image = lik
+            config.assets.large_image = lik
         }
         if let Some(lit) = arg.large_text {
-            config.discord.assets.large_text = lit
+            config.assets.large_text = lit
         }
         if let Some(sik) = arg.small_image {
-            config.discord.assets.small_image = sik
+            config.assets.small_image = sik
         }
         if let Some(sit) = arg.small_text {
-            config.discord.assets.small_text = sit
+            config.assets.small_text = sit
         }
         if let Some(state) = arg.state {
-            config.discord.state = state
+            config.state = state
         }
     }
-    if !config.discord.buttons.is_empty() {
+    if !config.buttons.is_empty() {
         if let Some(b1t) = arg.button1_text {
-            config.discord.buttons.btn1_text = b1t;
+            config.buttons.btn1_text = b1t;
         }
         if let Some(b1u) = arg.button1_url {
-            config.discord.buttons.btn1_url = b1u;
+            config.buttons.btn1_url = b1u;
         }
         if let Some(b2t) = arg.button2_text {
-            config.discord.buttons.btn2_text = b2t;
+            config.buttons.btn2_text = b2t;
         }
         if let Some(b2u) = arg.button2_url {
-            config.discord.buttons.btn2_url = b2u;
+            config.buttons.btn2_url = b2u;
         }
     }
 
-    return write_config(&config);
+    return write_config(config);
 }
 
 /// Initialize and connect `DiscordIpcClient`.
@@ -105,7 +105,7 @@ pub async fn client_init(config: &mut Config) -> Result<ClientBundle, ()> {
         Ok(_) => info!("Discord client connected to IPC"),
     }
 
-    let spotify_client = match spotify::client_init(config).await {
+    let spotify_client = match spotify::client_init(&mut config.spotify).await {
         Err(_) => return Err(()),
         Ok(client) => client,
     };

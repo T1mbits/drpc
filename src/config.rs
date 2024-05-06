@@ -46,11 +46,14 @@ pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config(config: &Config) -> Result<Option<ClientBundle>, ()> {
+pub fn write_config<T>(config: &T) -> Result<Option<ClientBundle>, ()>
+where
+    T: SerializeConfig,
+{
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
-    let serialized_config: String = match to_string(config) {
+    let serialized_config: String = match to_string(&config.serialize()) {
         Ok(serialized_config) => {
             trace!("Serialized config");
             serialized_config
@@ -147,6 +150,10 @@ fn verify_config_integrity(
     };
 }
 
+pub trait SerializeConfig {
+    fn serialize(&self) -> Config;
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub discord: DiscordConfig,
@@ -183,6 +190,12 @@ impl Default for Config {
     }
 }
 
+impl SerializeConfig for Config {
+    fn serialize(&self) -> Config {
+        return self.to_owned();
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DiscordConfig {
     pub assets: DiscordConfigAssets,
@@ -190,6 +203,18 @@ pub struct DiscordConfig {
     pub client_id: u64,
     pub state: String,
     pub details: String,
+}
+
+impl SerializeConfig for DiscordConfig {
+    fn serialize(&self) -> Config {
+        return match read_config_file(false) {
+            Err(_) => todo!(),
+            Ok(mut config) => {
+                config.discord = self.to_owned();
+                config
+            }
+        };
+    }
 }
 
 impl DiscordConfig {
@@ -212,9 +237,7 @@ impl DiscordConfig {
             state: String::new(),
         };
     }
-}
 
-impl DiscordConfig {
     pub fn replace_templates(&mut self, template_hashmap: &HashMap<&str, String>) {
         let config: DiscordConfig = self.to_owned();
 
@@ -291,6 +314,18 @@ pub struct SpotifyConfig {
     pub refresh_token: String,
 }
 
+impl SerializeConfig for SpotifyConfig {
+    fn serialize(&self) -> Config {
+        return match read_config_file(false) {
+            Err(_) => todo!(),
+            Ok(mut config) => {
+                config.spotify = self.to_owned();
+                config
+            }
+        };
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SpotifyFallbackConfig {
     pub album_name: String,
@@ -307,6 +342,18 @@ pub struct ProcessesConfig {
     pub idle_text: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub processes: Vec<ProcessConfig>,
+}
+
+impl SerializeConfig for ProcessesConfig {
+    fn serialize(&self) -> Config {
+        return match read_config_file(false) {
+            Err(_) => todo!(),
+            Ok(mut config) => {
+                config.processes = self.to_owned();
+                config
+            }
+        };
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

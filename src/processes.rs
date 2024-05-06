@@ -53,11 +53,14 @@ pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<ClientBundle>,
 }
 
 #[instrument(skip_all)]
-pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> Result<Option<ClientBundle>, ()> {
+pub fn add_process(
+    config: &mut ProcessesConfig,
+    args: CliProcessesAdd,
+) -> Result<Option<ClientBundle>, ()> {
     let trace_data: CliProcessesAdd = args.clone();
-    let index: usize = config.processes.processes.len();
+    let index: usize = config.processes.len();
 
-    config.processes.processes.push(ProcessConfig {
+    config.processes.push(ProcessConfig {
         image: args.image,
         name: args.name,
         text: args.text,
@@ -70,19 +73,19 @@ pub fn add_process(config: &mut Config, args: CliProcessesAdd) -> Result<Option<
 
 #[instrument(skip_all)]
 pub fn change_process_priority(
-    config: &mut Config,
+    config: &mut ProcessesConfig,
     arg: CliProcessesPriority,
 ) -> Result<Option<ClientBundle>, ()> {
     fn set_index(
-        config: &mut Config,
+        config: &mut ProcessesConfig,
         name: String,
         old_index: usize,
         new_index: usize,
     ) -> Result<Option<ClientBundle>, ()> {
         trace!("Process {name} will be set to index {new_index}");
 
-        let process: ProcessConfig = config.processes.processes.remove(old_index);
-        config.processes.processes.insert(new_index, process);
+        let process: ProcessConfig = config.processes.remove(old_index);
+        config.processes.insert(new_index, process);
 
         println!("Set process {name} to priority {new_index}");
         return write_config(config);
@@ -100,13 +103,11 @@ pub fn change_process_priority(
         } => {
             if let Some(index) = config
                 .processes
-                .processes
                 .iter()
                 .position(|process: &ProcessConfig| process.name == name)
             {
-                let new_index: usize = (index as i32 + 1)
-                    .clamp(0, config.processes.processes.len() as i32 - 1)
-                    as usize;
+                let new_index: usize =
+                    (index as i32 + 1).clamp(0, config.processes.len() as i32 - 1) as usize;
                 set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
@@ -124,13 +125,11 @@ pub fn change_process_priority(
         } => {
             if let Some(index) = config
                 .processes
-                .processes
                 .iter()
                 .position(|process: &ProcessConfig| process.name == name)
             {
-                let new_index: usize = (index as i32 - 1)
-                    .clamp(0, config.processes.processes.len() as i32 - 1)
-                    as usize;
+                let new_index: usize =
+                    (index as i32 - 1).clamp(0, config.processes.len() as i32 - 1) as usize;
                 set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
@@ -148,13 +147,11 @@ pub fn change_process_priority(
         } => {
             if let Some(index) = config
                 .processes
-                .processes
                 .iter()
                 .position(|process: &ProcessConfig| process.name == name)
             {
-                let new_index: usize = (new_index as i32)
-                    .clamp(0, config.processes.processes.len() as i32 - 1)
-                    as usize;
+                let new_index: usize =
+                    (new_index as i32).clamp(0, config.processes.len() as i32 - 1) as usize;
                 set_index(config, name, index, new_index)
             } else {
                 error!("No process named {name} found");
@@ -165,14 +162,16 @@ pub fn change_process_priority(
     };
 }
 
-pub fn remove_process(config: &mut Config, name: String) -> Result<Option<ClientBundle>, ()> {
+pub fn remove_process(
+    config: &mut ProcessesConfig,
+    name: String,
+) -> Result<Option<ClientBundle>, ()> {
     if let Some(index) = config
-        .processes
         .processes
         .iter()
         .position(|process: &ProcessConfig| process.name == name)
     {
-        config.processes.processes.remove(index);
+        config.processes.remove(index);
 
         trace!("Removed process {name}");
         println!("Removed process {name}");

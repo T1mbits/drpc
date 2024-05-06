@@ -1,4 +1,4 @@
-use crate::config::{write_config, Config, SpotifyFallbackConfig};
+use crate::prelude::*;
 use rspotify::{
     clients::{BaseClient, OAuthClient},
     model::{AdditionalType, PlayableItem},
@@ -7,12 +7,10 @@ use rspotify::{
     AuthCodeSpotify, Credentials, OAuth, Token,
 };
 use std::sync::Arc;
-use tracing::{debug, error, instrument, trace};
 
 #[instrument(skip_all)]
-pub async fn client_init(config: &mut Config) -> Result<AuthCodeSpotify, ()> {
-    let credentials: Credentials =
-        Credentials::new(&config.spotify.client_id, &config.spotify.client_secret);
+pub async fn client_init(config: &mut SpotifyConfig) -> Result<AuthCodeSpotify, ()> {
+    let credentials: Credentials = Credentials::new(&config.client_id, &config.client_secret);
     let oauth: OAuth = OAuth {
         redirect_uri: "http://localhost:3000/callback".to_string(),
         state: "ddrpcscope".to_string(),
@@ -35,8 +33,8 @@ pub async fn client_init(config: &mut Config) -> Result<AuthCodeSpotify, ()> {
 }
 
 #[instrument(skip_all)]
-async fn authorize(config: &mut Config, client: &mut AuthCodeSpotify) -> Result<(), ()> {
-    if config.spotify.refresh_token.is_empty() {
+async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Result<(), ()> {
+    if config.refresh_token.is_empty() {
         trace!("No refresh token found, requesting authorization");
         let url = match client.get_authorize_url(false) {
             Err(error) => {
@@ -59,7 +57,7 @@ async fn authorize(config: &mut Config, client: &mut AuthCodeSpotify) -> Result<
     }
 
     let mut token = Token::default();
-    token.refresh_token = Some(config.spotify.refresh_token.to_owned());
+    token.refresh_token = Some(config.refresh_token.to_owned());
     token.scopes = scopes!("user-read-currently-playing");
 
     trace!("Created {token:?} from refresh token");
@@ -70,7 +68,10 @@ async fn authorize(config: &mut Config, client: &mut AuthCodeSpotify) -> Result<
 }
 
 #[instrument(skip_all)]
-async fn save_refresh_token(config: &mut Config, client: &AuthCodeSpotify) -> Result<(), ()> {
+async fn save_refresh_token(
+    config: &mut SpotifyConfig,
+    client: &AuthCodeSpotify,
+) -> Result<(), ()> {
     trace!("Attempting to extract token");
 
     let token_mutex = client.get_token();
@@ -88,7 +89,7 @@ async fn save_refresh_token(config: &mut Config, client: &AuthCodeSpotify) -> Re
             }
             Some(refresh_token) => {
                 trace!("Spotify refresh token: {refresh_token:?}");
-                config.spotify.refresh_token = refresh_token.to_owned();
+                config.refresh_token = refresh_token.to_owned();
 
                 match write_config(config) {
                     Err(_) => Err(()),
