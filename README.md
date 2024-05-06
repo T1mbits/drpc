@@ -33,9 +33,6 @@ The purpose of this program is to allow the user to set custom Discord rich pres
 
 ## Getting Started
 
-> [!NOTE]
-> I haven't done this before and I'm just hoping that these are the correct steps.
-
 ### Installation
 
 ### Build
@@ -70,27 +67,16 @@ I'll finish the CLI later...
 
 ## Features/Roadmap
 
-### 0.1.0
-
 -   [x] Custom Discord rich presence
 -   [x] Detect target processes
--   [ ] Spotify integration
--   [x] Template variables
--   [ ] An actual CLI
+-   [x] Spotify integration
+-   [ ] Template variables
+-   [ ] Functional CLI with proper I/O
 -   [ ] (useful) CLI based help
-
-##### 0.2.0?
-
--   [ ] IPC for in-depth process data
--   [ ] Custom defined template strings (used with above)
-
-##### 0.3.0?
-
+-	[ ] TUI
+-   [ ] IPC for detailed custom data
+-   [ ] Custom defined template variables (used with IPC)
 -   [ ] GUI
-
-###### Literally never
-
--   [ ] actually writing good code
 
 ## Supported Platforms
 
