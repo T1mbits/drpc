@@ -53,7 +53,7 @@ where
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
-    let serialized_config: String = match to_string(&config.serialize()) {
+    let serialized_config: String = match to_string(&config.get_whole_config()) {
         Ok(serialized_config) => {
             trace!("Serialized config");
             serialized_config
@@ -151,7 +151,7 @@ fn verify_config_integrity(
 }
 
 pub trait SerializeConfig {
-    fn serialize(&self) -> Config;
+    fn get_whole_config(&self) -> Config;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -191,7 +191,7 @@ impl Default for Config {
 }
 
 impl SerializeConfig for Config {
-    fn serialize(&self) -> Config {
+    fn get_whole_config(&self) -> Config {
         return self.to_owned();
     }
 }
@@ -206,7 +206,7 @@ pub struct DiscordConfig {
 }
 
 impl SerializeConfig for DiscordConfig {
-    fn serialize(&self) -> Config {
+    fn get_whole_config(&self) -> Config {
         return match read_config_file(false) {
             Err(_) => todo!(),
             Ok(mut config) => {
@@ -238,7 +238,7 @@ impl DiscordConfig {
         };
     }
 
-    pub fn replace_templates(&mut self, template_hashmap: &HashMap<&str, String>) {
+    pub fn replace_templates(&mut self, template_hashmap: &HashMap<String, String>) {
         let config: DiscordConfig = self.to_owned();
 
         self.assets.large_image =
@@ -315,7 +315,7 @@ pub struct SpotifyConfig {
 }
 
 impl SerializeConfig for SpotifyConfig {
-    fn serialize(&self) -> Config {
+    fn get_whole_config(&self) -> Config {
         return match read_config_file(false) {
             Err(_) => todo!(),
             Ok(mut config) => {
@@ -345,7 +345,7 @@ pub struct ProcessesConfig {
 }
 
 impl SerializeConfig for ProcessesConfig {
-    fn serialize(&self) -> Config {
+    fn get_whole_config(&self) -> Config {
         return match read_config_file(false) {
             Err(_) => todo!(),
             Ok(mut config) => {

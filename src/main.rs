@@ -16,7 +16,6 @@ use prelude::*;
 use std::process::ExitCode;
 use tracing::Level;
 // use tracing_appender::rolling;
-use spotify::client_init;
 use tracing_subscriber::fmt;
 
 #[tokio::main]
@@ -29,8 +28,6 @@ async fn main() -> ExitCode {
         Ok(config) => config,
     };
     trace!("Config:\n{config:#?}");
-
-    client_init(&mut config).await.unwrap();
 
     return match parse_command(&mut config, args).await {
         Err(_) => ExitCode::FAILURE,

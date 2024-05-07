@@ -127,7 +127,7 @@ pub async fn set_activity(
     let mut replaced_data: DiscordConfig = config.discord.clone();
     trace!("Discord data cloned");
 
-    let template_hashmap: HashMap<&str, String> = template_hashmap(config, &bundle.spotify).await;
+    let template_hashmap: HashMap<String, String> = template_hashmap(config, &bundle.spotify).await;
 
     info!("{template_hashmap:#?}");
 
