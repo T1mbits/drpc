@@ -40,17 +40,7 @@ pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (St
     }
     trace!("No active target processes, using idle data");
 
-    let mut idle_text = config.idle_text.to_owned();
-    let mut idle_image = config.idle_image.to_owned();
-
-    if idle_text.is_empty() {
-        idle_text = "Idle".to_string();
-    }
-    if idle_image.is_empty() {
-        idle_image = "idle".to_string();
-    }
-
-    return (idle_text, idle_image);
+    return (config.idle_text.to_owned(), config.idle_image.to_owned());
 }
 
 pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<ClientBundle>, ()> {

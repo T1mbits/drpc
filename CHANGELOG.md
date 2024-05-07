@@ -32,17 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 ### Fixed
-- Allow idle fields to be blank
 
 ### Removed
 - Unused CLI arguments
 
 ### Security
 
-## [0.1.2] - 2024-05-07
+## [0.1.2] - 2024-05-08
 
 ### Fixed
-- Idle fields will be given a value if none is provided because the program doesn't work otherwise for some reason
+- Fields can be blank, if a button field is missing or an image asset is missing the button/asset will not show
 
 ## [0.1.1] - 2024-05-07
 

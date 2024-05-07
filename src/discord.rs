@@ -144,47 +144,47 @@ pub async fn set_activity(
 
     let mut activity = Activity::new();
 
-    if !config.discord.details.is_empty() {
+    if !bundle.replaced_data.details.is_empty() {
         activity = activity.details(&bundle.replaced_data.details);
     }
 
-    if !config.discord.state.is_empty() {
+    if !bundle.replaced_data.state.is_empty() {
         activity = activity.state(&bundle.replaced_data.state);
     }
 
-    if !config.discord.assets.is_empty() {
+    if !bundle.replaced_data.assets.is_empty() {
         let mut assets = Assets::new();
 
-        if !config.discord.assets.large_image.is_empty() {
+        if !bundle.replaced_data.assets.large_image.is_empty() {
             assets = assets.large_image(&bundle.replaced_data.assets.large_image);
         }
 
-        if !config.discord.assets.large_text.is_empty() {
+        if !bundle.replaced_data.assets.large_text.is_empty() {
             assets = assets.large_text(&bundle.replaced_data.assets.large_text)
         }
 
-        if !config.discord.assets.small_image.is_empty() {
+        if !bundle.replaced_data.assets.small_image.is_empty() {
             assets = assets.small_image(&bundle.replaced_data.assets.small_image);
         }
 
-        if !config.discord.assets.small_text.is_empty() {
+        if !bundle.replaced_data.assets.small_text.is_empty() {
             assets = assets.small_text(&bundle.replaced_data.assets.small_text);
         }
 
         activity = activity.assets(assets);
     }
 
-    if !config.discord.buttons.is_empty() {
+    if !bundle.replaced_data.buttons.is_empty() {
         let mut buttons: Vec<Button> = Vec::new();
 
-        if !config.discord.buttons.btn1_is_empty() {
+        if !bundle.replaced_data.buttons.btn1_is_empty() {
             buttons.push(Button::new(
                 &bundle.replaced_data.buttons.btn1_text,
                 &bundle.replaced_data.buttons.btn1_url,
             ));
         }
 
-        if !config.discord.buttons.btn2_is_empty() {
+        if !bundle.replaced_data.buttons.btn2_is_empty() {
             buttons.push(Button::new(
                 &bundle.replaced_data.buttons.btn2_text,
                 &bundle.replaced_data.buttons.btn2_url,
