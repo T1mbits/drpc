@@ -17,17 +17,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	- Processes management
 	- Spotify account and client management
 - Logging to files
+- Timestamps
 
 ### Changed
+- Will not read/write to file while running (including logging when implemented) unless specifically asked to
+	- Will only write to file during explicit write operations (setting config fields)
+	- Will only read on program startup (may reimplement daemon for update command and detachable TUI/GUI interface)
+	- Must be given flag to actually log anything (to stdout or file)
+- Will not ping Spotify API under certain conditions:
+	- No client id/secret
+	- No Spotify flag
+	- No {{spotify}} variables found
 
 ### Deprecated
 
 ### Fixed
+- Allow idle fields to be blank
 
 ### Removed
 - Unused CLI arguments
 
 ### Security
+
+## [0.1.2] - 2024-05-07
+
+### Fixed
+- Idle fields will be given a value if none is provided because the program doesn't work otherwise for some reason
 
 ## [0.1.1] - 2024-05-07
 

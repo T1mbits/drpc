@@ -61,6 +61,9 @@ cargo build --release
 
 ## Usage
 
+> [!WARNING]
+> Will constantly read and write to a file every few seconds and will also constantly ping Spotify for track data
+
 jokes on you I've been editing the config file to work this thing
 
 I'll finish the CLI later...
@@ -70,7 +73,7 @@ I'll finish the CLI later...
 -   [x] Custom Discord rich presence
 -   [x] Detect target processes
 -   [x] Spotify integration
--   [ ] Template variables
+-   [x] Template variables
 -   [ ] Functional CLI with proper I/O
 -   [ ] (useful) CLI based help
 -	[ ] TUI
