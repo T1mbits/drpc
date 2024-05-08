@@ -20,14 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timestamps
 
 ### Changed
-- Will not read/write to file while running (including logging when implemented) unless specifically asked to
-	- Will only write to file during explicit write operations (setting config fields)
-	- Will only read on program startup (may reimplement daemon for update command and detachable TUI/GUI interface)
-	- Must be given flag to actually log anything (to stdout or file)
+- Must be given flag to actually log anything (to stdout or file)
 - Will not ping Spotify API under certain conditions:
-	- No client id/secret
-	- No Spotify flag
+	- Program received --no-spotify
 	- No {{spotify}} variables found
+- Program handles error & prints error messages in main loop
 
 ### Deprecated
 
@@ -38,12 +35,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## [0.1.2] - 2024-05-08
+## [0.1.3] - 2024-05-07
+
+### Added
+- AppState to hold changing data in the program, separate of Config which shouldn't change under normal circumstances
+	- DiscordState to hold Discord IPC client and previous activity data for comparisons
+	- Will be used for TUI as well so big +
+- stupid_type_parameters_damnit() to convert Result<(), ()> to Result<Option\<AppState>, ()> as a temporary fix for return types because my error handling is scuffed
+
+### Changed
+- Will only write to config during explicit write operations (setting config fields)
+- Will only read config on program startup (may reimplement daemon for update command and detachable TUI/GUI interface)
+- All data from Config or AppState is only borrowed, never moved (probably, probably forgot to change it in some unused function)
 
 ### Fixed
-- Fields can be blank, if a button field is missing or an image asset is missing the button/asset will not show
+- Program will use Spotify fallback fields if client secret or id is missing or an error occurs during authorization
 
-## [0.1.1] - 2024-05-07
+## [0.1.2] - 2024-05-07
+
+### Fixed
+- Fields can be blank, if a button field is missing or an image asset is missing the button/asset will not show (intended)
+
+## [0.1.1] - 2024-05-06
 
 ### Added
 - SerializeConfig trait for Config types

@@ -10,13 +10,18 @@ use std::collections::HashMap;
 #[instrument(skip_all)]
 pub async fn template_hashmap<'th>(
     config: &Config,
-    client: &AuthCodeSpotify,
+    spotify: &Option<AuthCodeSpotify>,
 ) -> HashMap<String, String> {
     let (process_text, process_icon) =
         get_active_data(&config.processes, &get_names(&config.processes));
-    let track = match get_currently_playing_track(client).await.unwrap() {
-        None => TrackData::fallback(&config.spotify.fallback),
-        Some(track_data) => track_data,
+
+    let track = if let Some(client) = spotify {
+        match get_currently_playing_track(client).await.unwrap() {
+            None => TrackData::fallback(&config.spotify.fallback),
+            Some(track_data) => track_data,
+        }
+    } else {
+        TrackData::fallback(&config.spotify.fallback)
     };
 
     let mut replace_hashmap: HashMap<String, String> = HashMap::new();

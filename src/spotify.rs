@@ -9,7 +9,11 @@ use rspotify::{
 use std::sync::Arc;
 
 #[instrument(skip_all)]
-pub async fn client_init(config: &mut SpotifyConfig) -> Result<AuthCodeSpotify, ()> {
+pub async fn client_init(config: &mut SpotifyConfig) -> Result<Option<AuthCodeSpotify>, ()> {
+    if config.client_id.is_empty() || config.client_secret.is_empty() {
+        warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
+        return Ok(None);
+    }
     let credentials: Credentials = Credentials::new(&config.client_id, &config.client_secret);
     let oauth: OAuth = OAuth {
         redirect_uri: "http://localhost:3000/callback".to_string(),
@@ -20,7 +24,7 @@ pub async fn client_init(config: &mut SpotifyConfig) -> Result<AuthCodeSpotify, 
     let mut client = AuthCodeSpotify::new(credentials, oauth);
 
     match authorize(config, &mut client).await {
-        Err(_) => return Err(()),
+        Err(_) => return Ok(None),
         _ => (),
     }
 
@@ -29,7 +33,7 @@ pub async fn client_init(config: &mut SpotifyConfig) -> Result<AuthCodeSpotify, 
         _ => (),
     };
 
-    return Ok(client);
+    return Ok(Some(client));
 }
 
 #[instrument(skip_all)]
@@ -39,6 +43,7 @@ async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Resu
         let url = match client.get_authorize_url(false) {
             Err(error) => {
                 error!("Error: {error}");
+                warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
                 return Err(());
             }
             Ok(url) => url,
@@ -47,6 +52,7 @@ async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Resu
         return match client.prompt_for_token(&url).await {
             Err(error) => {
                 error!("Error: {error}");
+                warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
                 Err(())
             }
             Ok(_) => {

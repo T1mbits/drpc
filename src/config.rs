@@ -1,4 +1,4 @@
-use crate::{discord::ClientBundle, parser::variables::replace_template_variables, prelude::*};
+use crate::{parser::variables::replace_template_variables, prelude::*};
 use dirs::config_dir;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
@@ -46,10 +46,7 @@ pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config<T>(config: &T) -> Result<Option<ClientBundle>, ()>
-where
-    T: SerializeConfig,
-{
+pub fn write_config<T: SerializeConfig>(config: &T) -> Result<(), ()> {
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
@@ -77,7 +74,7 @@ where
     return match fs::write(&config_file, serialized_config) {
         Ok(_) => {
             trace!("Wrote to file {config_file}");
-            Ok(None)
+            Ok(())
         }
         Err(error) => {
             error!("Error while writing config: {error}");
