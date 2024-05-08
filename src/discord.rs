@@ -14,8 +14,23 @@ pub struct ClientBundle {
     pub spotify: AuthCodeSpotify,
 }
 
+pub struct DiscordState {
+    pub client: DiscordIpcClient,
+    /// From [`DiscordConfig`] with all fields parsed with [`DiscordConfig::replace_templates`];
+    pub prev_data: DiscordConfig,
+}
+
+impl DiscordState {
+    fn new(client: DiscordIpcClient, client_id: u64) -> Self {
+        Self {
+            client,
+            prev_data: DiscordConfig::new(client_id),
+        }
+    }
+}
+
 /// Print Discord activity data saved in config.
-pub fn print_activity_data(config: &DiscordConfig) -> Result<Option<ClientBundle>, ()> {
+pub fn print_activity_data(config: &DiscordConfig) -> Result<(), ()> {
     println!(
         "Client ID: {}\nDetails: {}\nState: {}\nLarge Image Key: {}\nLarge Image Text: {}\nSmall Image Key: {}\nSmall Image Text: {}\nButton 1 Text: {}\nButton 1 URL: {}\nButton 2 Text: {}\nButton 2 URL: {}",
         config.client_id,
@@ -30,15 +45,12 @@ pub fn print_activity_data(config: &DiscordConfig) -> Result<Option<ClientBundle
         {if config.buttons.btn2_text.is_empty() {"<None>"} else {config.buttons.btn2_text.as_str()}},
         {if config.buttons.btn2_url.is_empty() {"<None>"} else {config.buttons.btn2_url.as_str()}},
     );
-    return Ok(None);
+    return Ok(());
 }
 
 /// Overwrite Discord data in `Config` and write to file.
 #[instrument(skip_all)]
-pub fn set_activity_data(
-    config: &mut DiscordConfig,
-    arg: CliDiscordSet,
-) -> Result<Option<ClientBundle>, ()> {
+pub fn set_activity_data(config: &mut DiscordConfig, arg: CliDiscordSet) -> Result<(), ()> {
     trace!("Overwriting with:\n{arg:#?}");
 
     if let Some(id) = arg.client_id {
@@ -84,7 +96,7 @@ pub fn set_activity_data(
 
 /// Initialize and connect `DiscordIpcClient`.
 #[instrument(skip_all)]
-pub async fn client_init(config: &mut Config) -> Result<ClientBundle, ()> {
+pub async fn client_init(config: &mut Config) -> Result<AppState, ()> {
     let mut client: DiscordIpcClient =
         match DiscordIpcClient::new(&config.discord.client_id.to_string()) {
             Err(error) => {
@@ -110,99 +122,96 @@ pub async fn client_init(config: &mut Config) -> Result<ClientBundle, ()> {
         Ok(client) => client,
     };
 
-    return Ok(ClientBundle {
-        discord: client,
-        replaced_data: DiscordConfig::new(0),
-        spotify: spotify_client,
-    });
+    return Ok(AppState::new(DiscordState::new(client, 0), spotify_client));
 }
 
 /// Set Discord activity. Will clone `DiscordConfig` data and replace template variables before comparing to old data. If the new data matches<br/>
 /// with the old data, the function will return. Otherwise, the new data is used and the activity will be overwritten.
 #[instrument(skip_all)]
 pub async fn set_activity(
-    mut bundle: ClientBundle,
-    config: &mut Config,
-) -> Result<ClientBundle, ()> {
+    config: &Config,
+    discord: &mut DiscordState,
+    spotify: &Option<AuthCodeSpotify>,
+) -> Result<(), ()> {
     let mut replaced_data: DiscordConfig = config.discord.clone();
     trace!("Discord data cloned");
 
-    let template_hashmap: HashMap<String, String> = template_hashmap(config, &bundle.spotify).await;
+    let template_hashmap: HashMap<String, String> = template_hashmap(config, spotify).await;
 
     info!("{template_hashmap:#?}");
 
     replaced_data.replace_templates(&template_hashmap);
 
-    if replaced_data == bundle.replaced_data {
-        debug!("Activity data has not changed");
-        return Ok(bundle);
+    if replaced_data == discord.prev_data {
+        trace!("Activity data has not changed");
+        return Ok(());
     }
 
     trace!("Activity data has changed, overwriting and setting activity");
 
-    bundle.replaced_data = replaced_data;
+    discord.prev_data = replaced_data;
 
     let mut activity = Activity::new();
 
-    if !bundle.replaced_data.details.is_empty() {
-        activity = activity.details(&bundle.replaced_data.details);
+    if !discord.prev_data.details.is_empty() {
+        activity = activity.details(&discord.prev_data.details);
     }
 
-    if !bundle.replaced_data.state.is_empty() {
-        activity = activity.state(&bundle.replaced_data.state);
+    if !discord.prev_data.state.is_empty() {
+        activity = activity.state(&discord.prev_data.state);
     }
 
-    if !bundle.replaced_data.assets.is_empty() {
+    if !discord.prev_data.assets.is_empty() {
         let mut assets = Assets::new();
 
-        if !bundle.replaced_data.assets.large_image.is_empty() {
-            assets = assets.large_image(&bundle.replaced_data.assets.large_image);
+        if !discord.prev_data.assets.large_image.is_empty() {
+            assets = assets.large_image(&discord.prev_data.assets.large_image);
         }
 
-        if !bundle.replaced_data.assets.large_text.is_empty() {
-            assets = assets.large_text(&bundle.replaced_data.assets.large_text)
+        if !discord.prev_data.assets.large_text.is_empty() {
+            assets = assets.large_text(&discord.prev_data.assets.large_text)
         }
 
-        if !bundle.replaced_data.assets.small_image.is_empty() {
-            assets = assets.small_image(&bundle.replaced_data.assets.small_image);
+        if !discord.prev_data.assets.small_image.is_empty() {
+            assets = assets.small_image(&discord.prev_data.assets.small_image);
         }
 
-        if !bundle.replaced_data.assets.small_text.is_empty() {
-            assets = assets.small_text(&bundle.replaced_data.assets.small_text);
+        if !discord.prev_data.assets.small_text.is_empty() {
+            assets = assets.small_text(&discord.prev_data.assets.small_text);
         }
 
         activity = activity.assets(assets);
     }
 
-    if !bundle.replaced_data.buttons.is_empty() {
+    if !discord.prev_data.buttons.is_empty() {
         let mut buttons: Vec<Button> = Vec::new();
 
-        if !bundle.replaced_data.buttons.btn1_is_empty() {
+        if !discord.prev_data.buttons.btn1_is_empty() {
             buttons.push(Button::new(
-                &bundle.replaced_data.buttons.btn1_text,
-                &bundle.replaced_data.buttons.btn1_url,
+                &discord.prev_data.buttons.btn1_text,
+                &discord.prev_data.buttons.btn1_url,
             ));
         }
 
-        if !bundle.replaced_data.buttons.btn2_is_empty() {
+        if !discord.prev_data.buttons.btn2_is_empty() {
             buttons.push(Button::new(
-                &bundle.replaced_data.buttons.btn2_text,
-                &bundle.replaced_data.buttons.btn2_url,
+                &discord.prev_data.buttons.btn2_text,
+                &discord.prev_data.buttons.btn2_url,
             ));
         }
 
         activity = activity.buttons(buttons);
     }
 
-    let data: DiscordConfig = bundle.replaced_data.to_owned();
+    let data: DiscordConfig = discord.prev_data.to_owned();
     trace!("Activity set to: \n{data:#?}");
 
-    return match bundle.discord.set_activity(activity) {
+    return match discord.client.set_activity(activity) {
         Err(error) => {
             error!("Error while setting activity: {error}");
             Err(())
         }
-        Ok(_) => Ok(bundle),
+        Ok(_) => Ok(()),
     };
 }
 
@@ -225,19 +234,20 @@ pub fn clear_activity(mut bundle: ClientBundle) -> Result<ClientBundle, ()> {
 /// but no changes will take place.
 #[instrument(skip_all)]
 pub async fn update_activity(
-    config: &mut Config,
-    client: ClientBundle,
-) -> Result<ClientBundle, ()> {
-    *config = match read_config_file(false) {
-        Err(_) => {
-            warn!("Config file was not deserialized. Will continue to use old config.");
-            return Ok(client);
-        }
-        Ok(config) => config,
-    };
-    info!("Updating Discord activity");
-    return match set_activity(client, config).await {
+    config: &Config,
+    discord: &mut DiscordState,
+    spotify: &Option<AuthCodeSpotify>,
+) -> Result<(), ()> {
+    // *config = match read_config_file(false) {
+    //     Err(_) => {
+    //         warn!("Config file was not deserialized. Will continue to use old config.");
+    //         return Ok(client);
+    //     }
+    //     Ok(config) => config,
+    // };
+    trace!("Updating Discord activity");
+    return match set_activity(config, discord, spotify).await {
         Err(_) => Err(()),
-        Ok(client) => Ok(client),
+        _ => Ok(()),
     };
 }

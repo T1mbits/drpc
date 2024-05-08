@@ -1,5 +1,4 @@
 use crate::{
-    discord::ClientBundle,
     parser::{CliProcessesAdd, CliProcessesPriority, CliProcessesPriorityOperation},
     prelude::*,
 };
@@ -43,21 +42,18 @@ pub fn get_active_data(config: &ProcessesConfig, processes: &Vec<String>) -> (St
     return (config.idle_text.to_owned(), config.idle_image.to_owned());
 }
 
-pub fn print_data_list(config: &ProcessesConfig) -> Result<Option<ClientBundle>, ()> {
+pub fn print_data_list(config: &ProcessesConfig) -> Result<(), ()> {
     for (index, process) in config.processes.iter().enumerate() {
         println!(
             "Process {}\n\tIcon: \"{}\"\n\tText: \"{}\"\n\tName: \"{}\"",
             index, process.image, process.text, process.name
         );
     }
-    return Ok(None);
+    return Ok(());
 }
 
 #[instrument(skip_all)]
-pub fn add_process(
-    config: &mut ProcessesConfig,
-    args: CliProcessesAdd,
-) -> Result<Option<ClientBundle>, ()> {
+pub fn add_process(config: &mut ProcessesConfig, args: CliProcessesAdd) -> Result<(), ()> {
     let trace_data: CliProcessesAdd = args.clone();
     let index: usize = config.processes.len();
 
@@ -76,13 +72,13 @@ pub fn add_process(
 pub fn change_process_priority(
     config: &mut ProcessesConfig,
     arg: CliProcessesPriority,
-) -> Result<Option<ClientBundle>, ()> {
+) -> Result<(), ()> {
     fn set_index(
         config: &mut ProcessesConfig,
         name: String,
         old_index: usize,
         new_index: usize,
-    ) -> Result<Option<ClientBundle>, ()> {
+    ) -> Result<(), ()> {
         trace!("Process {name} will be set to index {new_index}");
 
         let process: ProcessConfig = config.processes.remove(old_index);
@@ -163,10 +159,7 @@ pub fn change_process_priority(
     };
 }
 
-pub fn remove_process(
-    config: &mut ProcessesConfig,
-    name: String,
-) -> Result<Option<ClientBundle>, ()> {
+pub fn remove_process(config: &mut ProcessesConfig, name: String) -> Result<(), ()> {
     if let Some(index) = config
         .processes
         .iter()

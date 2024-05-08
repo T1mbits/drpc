@@ -7,6 +7,29 @@ pub mod spotify;
 pub mod prelude {
     pub use crate::config::*;
     pub use tracing::{debug, error, info, instrument, trace, warn};
+
+    use crate::discord::DiscordState;
+    use rspotify::AuthCodeSpotify;
+
+    pub struct AppState {
+        pub discord: DiscordState,
+        pub spotify: Option<AuthCodeSpotify>,
+        // pub config: Config,
+    }
+
+    impl AppState {
+        pub fn new(
+            // config: Config,
+            discord: DiscordState,
+            spotify: Option<AuthCodeSpotify>,
+        ) -> Self {
+            return Self {
+                // config,
+                discord,
+                spotify,
+            };
+        }
+    }
 }
 
 use clap::Parser;
@@ -32,10 +55,10 @@ async fn main() -> ExitCode {
     return match parse_command(&mut config, args).await {
         Err(_) => ExitCode::FAILURE,
         Ok(result) => {
-            if let Some(mut client) = result {
+            if let Some(mut app) = result {
                 loop {
                     std::thread::sleep(std::time::Duration::from_secs(3));
-                    client = match update_activity(&mut config, client).await {
+                    match update_activity(&config, &mut app.discord, &app.spotify).await {
                         Err(_) => return ExitCode::FAILURE,
 
                         Ok(client) => client,

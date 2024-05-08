@@ -2,32 +2,42 @@ use crate::{discord::*, parser::*, prelude::*, processes::*};
 
 /// Parse CLI subcommands and flags and call their respective functions.
 #[instrument(skip_all)]
-pub async fn parse_command(config: &mut Config, args: Cli) -> Result<Option<ClientBundle>, ()> {
+pub async fn parse_command(config: &mut Config, args: Cli) -> Result<Option<AppState>, ()> {
     trace!("Parsing command arguments:\n{args:#?}");
 
     return match args.subcommands {
         CliSubcommands::Discord(arg) => match arg.subcommands {
             CliDiscordSubcommands::Connect => match client_init(config).await {
                 Err(_) => Err(()),
-                Ok(client) => match set_activity(client, config).await {
+                Ok(mut app) => match set_activity(config, &mut app.discord, &app.spotify).await {
                     Err(_) => Err(()),
-                    Ok(client) => Ok(Some(client)),
+                    _ => Ok(Some(app)),
                 },
             },
             CliDiscordSubcommands::Disconnect => unimplemented!(),
-            CliDiscordSubcommands::Get(_arg) => print_activity_data(&config.discord),
+            CliDiscordSubcommands::Get(_arg) => {
+                stupid_type_parameters_damnit(print_activity_data(&config.discord))
+            }
 
-            CliDiscordSubcommands::Set(args) => set_activity_data(&mut config.discord, args),
+            CliDiscordSubcommands::Set(args) => {
+                stupid_type_parameters_damnit(set_activity_data(&mut config.discord, args))
+            }
             CliDiscordSubcommands::Update => unimplemented!(),
         },
         CliSubcommands::Kill => unimplemented!(),
         CliSubcommands::Processes(arg) => match arg.subcommands {
-            CliProcessesSubcommands::Add(arg) => add_process(&mut config.processes, arg),
-            CliProcessesSubcommands::List => print_data_list(&config.processes),
-            CliProcessesSubcommands::Priority(arg) => {
-                change_process_priority(&mut config.processes, arg)
+            CliProcessesSubcommands::Add(arg) => {
+                stupid_type_parameters_damnit(add_process(&mut config.processes, arg))
             }
-            CliProcessesSubcommands::Remove(arg) => remove_process(&mut config.processes, arg.name),
+            CliProcessesSubcommands::List => {
+                stupid_type_parameters_damnit(print_data_list(&config.processes))
+            }
+            CliProcessesSubcommands::Priority(arg) => {
+                stupid_type_parameters_damnit(change_process_priority(&mut config.processes, arg))
+            }
+            CliProcessesSubcommands::Remove(arg) => {
+                stupid_type_parameters_damnit(remove_process(&mut config.processes, arg.name))
+            }
             CliProcessesSubcommands::Show => todo!(),
         },
         CliSubcommands::Ping => {
@@ -49,5 +59,12 @@ pub async fn parse_command(config: &mut Config, args: Cli) -> Result<Option<Clie
             CliSpotifySubcommands::Remove => todo!(),
         },
         CliSubcommands::Start => unimplemented!(),
+    };
+}
+
+fn stupid_type_parameters_damnit(result: Result<(), ()>) -> Result<Option<AppState>, ()> {
+    return match result {
+        Err(_) => Err(()),
+        _ => Ok(None),
     };
 }
