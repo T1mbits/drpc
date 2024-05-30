@@ -6,6 +6,7 @@ pub mod spotify;
 
 pub mod prelude {
     pub use crate::config::*;
+    pub use std::error::Error;
     pub use tracing::{debug, error, info, instrument, trace, warn};
 
     use crate::discord::DiscordState;
@@ -47,21 +48,28 @@ async fn main() -> ExitCode {
     log_setup(args.debug, args.verbose);
 
     let mut config: Config = match initialize_config(args.config_overwrite) {
-        Err(_) => return ExitCode::FAILURE,
+        Err(error) => {
+            error!("{error}");
+            return ExitCode::FAILURE;
+        }
         Ok(config) => config,
     };
-    trace!("Config:\n{config:#?}");
 
     return match parse_command(&mut config, args).await {
-        Err(_) => ExitCode::FAILURE,
+        Err(error) => {
+            error!("{error}");
+            ExitCode::FAILURE
+        }
         Ok(result) => {
             if let Some(mut app) = result {
                 loop {
                     std::thread::sleep(std::time::Duration::from_secs(3));
                     match update_activity(&config, &mut app.discord, &app.spotify).await {
-                        Err(_) => return ExitCode::FAILURE,
-
-                        Ok(client) => client,
+                        Err(error) => {
+                            error!("{error}");
+                            return ExitCode::FAILURE;
+                        }
+                        _ => (),
                     }
                 }
             }

@@ -9,8 +9,11 @@ use rspotify::{
 use std::sync::Arc;
 
 #[instrument(skip_all)]
-pub async fn client_init(config: &mut SpotifyConfig) -> Result<Option<AuthCodeSpotify>, ()> {
+pub async fn client_init(
+    config: &mut SpotifyConfig,
+) -> Result<Option<AuthCodeSpotify>, Box<dyn Error>> {
     if config.client_id.is_empty() || config.client_secret.is_empty() {
+        trace!("No Spotify client ID and/or secret available");
         warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
         return Ok(None);
     }
@@ -22,27 +25,26 @@ pub async fn client_init(config: &mut SpotifyConfig) -> Result<Option<AuthCodeSp
         proxies: None,
     };
     let mut client = AuthCodeSpotify::new(credentials, oauth);
+    trace!("Spotify client initialized");
 
     match authorize(config, &mut client).await {
         Err(_) => return Ok(None),
         _ => (),
     }
 
-    match save_refresh_token(config, &client).await {
-        Err(_) => return Err(()),
-        _ => (),
-    };
+    save_refresh_token(config, &client).await?;
 
     return Ok(Some(client));
 }
 
+/// Has a blank result so that [`client_init`] can know to return a `None` instead of crashing the program
 #[instrument(skip_all)]
 async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Result<(), ()> {
     if config.refresh_token.is_empty() {
         trace!("No refresh token found, requesting authorization");
-        let url = match client.get_authorize_url(false) {
+        let url: String = match client.get_authorize_url(false) {
             Err(error) => {
-                error!("Error: {error}");
+                error!("{error}");
                 warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
                 return Err(());
             }
@@ -55,14 +57,14 @@ async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Resu
                 warn!("Skipping Spotify authorization. Spotify fields will use fallback values.");
                 Err(())
             }
-            Ok(_) => {
+            _ => {
                 debug!("Spotify client successfully authenticated");
                 Ok(())
             }
         };
     }
 
-    let mut token = Token::default();
+    let mut token: Token = Token::default();
     token.refresh_token = Some(config.refresh_token.to_owned());
     token.scopes = scopes!("user-read-currently-playing");
 
@@ -77,33 +79,43 @@ async fn authorize(config: &SpotifyConfig, client: &mut AuthCodeSpotify) -> Resu
 async fn save_refresh_token(
     config: &mut SpotifyConfig,
     client: &AuthCodeSpotify,
-) -> Result<(), ()> {
+) -> Result<(), Box<dyn Error>> {
     trace!("Attempting to extract token");
 
-    let token_mutex = client.get_token();
+    let token_mutex: Arc<Mutex<Option<Token>>> = client.get_token();
 
-    return match token_mutex
-        .lock()
-        .await
-        .expect("Token mutex poisoned")
-        .as_mut()
-    {
-        None => unreachable!("Token field should always be available if this function is called"),
-        Some(token) => match &token.refresh_token {
-            None => {
-                unreachable!("Refresh token should always be available if this function is called")
-            }
-            Some(refresh_token) => {
-                trace!("Spotify refresh token: {refresh_token:?}");
-                config.refresh_token = refresh_token.to_owned();
+    let refresh_token = token_mutex.lock().await.expect("Token mutex poisoned");
+    let refresh_token: &String = refresh_token
+        .as_ref()
+        .expect("Token field should always be available at this point")
+        .refresh_token
+        .as_ref()
+        .expect("Refresh token should always be available if this function is called");
 
-                match write_config(config) {
-                    Err(_) => Err(()),
-                    Ok(_) => Ok(()),
-                }
-            }
-        },
-    };
+    trace!("Spotify refresh token: {:?}", refresh_token);
+    config.refresh_token = refresh_token.to_owned();
+
+    return write_config(config);
+
+    // return match token_mutex
+    //     .lock()
+    //     .await
+    //     .expect("Token mutex poisoned")
+    //     .as_mut()
+    // {
+    //     None => unreachable!("Token field should always be available if this function is called"),
+    //     Some(token) => match &token.refresh_token {
+    //         None => {
+    //             unreachable!("Refresh token should always be available if this function is called")
+    //         }
+    //         Some(refresh_token) => {
+    //             trace!("Spotify refresh token: {refresh_token:?}");
+    //             config.refresh_token = refresh_token.to_owned();
+
+    //             write_config(config)
+    //         }
+    //     },
+    // };
 }
 
 #[instrument(skip_all)]
@@ -130,7 +142,7 @@ pub async fn get_currently_playing_track(
                         }
                     }
 
-                    let track_url = match track.external_urls.get_key_value("spotify") {
+                    let track_url: String = match track.external_urls.get_key_value("spotify") {
                         None => unreachable!("Track URL should always be available at this point"),
                         Some(url) => url.1.to_owned(),
                     };
@@ -143,9 +155,13 @@ pub async fn get_currently_playing_track(
                         track_url,
                     }));
                 }
+                trace!("No track playing");
                 return Ok(None);
             }
-            _ => return Ok(None),
+            _ => {
+                trace!("No track detected");
+                return Ok(None);
+            }
         },
     }
 }

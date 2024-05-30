@@ -22,82 +22,53 @@ fn file_path() -> String {
 
 /// Deserialize or create a new `Config` struct.
 #[instrument(skip_all)]
-pub fn initialize_config(overwrite: bool) -> Result<Config, ()> {
+pub fn initialize_config(overwrite: bool) -> Result<Config, Box<dyn Error>> {
     let file_path: &str = &file_path();
     debug!("Config file path: {file_path}");
     if Path::new(file_path).exists() {
         trace!("Config file found");
         return match read_config_file(overwrite) {
-            Err(_) => {
-                error!("Invalid configuration file found. Use --config-overwrite to overwrite the invalid config file with default values.");
-                Err(())
+            Err(error) => {
+                eprintln!("Invalid configuration file found. Use --config-overwrite to overwrite the invalid config file with default values.");
+                Err(error)
             }
             Ok(config) => Ok(config),
         };
     } else {
         warn!("Config file not found, creating new file with defaults");
-        let default = Config::default();
-        return match write_config(&default) {
-            Err(_) => Err(()),
-            Ok(_) => Ok(default),
-        };
+        let default: Config = Config::default();
+        write_config(&default)?;
+        return Ok(default);
     }
 }
 
 /// Write config to the file at `file_path()`
 #[instrument(skip_all)]
-pub fn write_config<T: SerializeConfig>(config: &T) -> Result<(), ()> {
+pub fn write_config<T: SerializeConfig>(config: &T) -> Result<(), Box<dyn Error>> {
     let config_dir: String = dir_path();
     let config_file: String = file_path();
 
-    let serialized_config: String = match to_string(&config.get_whole_config()) {
-        Ok(serialized_config) => {
-            trace!("Serialized config");
-            serialized_config
-        }
-        Err(error) => {
-            error!("Error while serializing config data: {error}");
-            return Err(());
-        }
-    };
+    let serialized_config: String = to_string(&config.get_whole_config())?;
+    trace!("Serialized config");
 
     if !Path::new(&config_dir).exists() {
-        match fs::create_dir_all(&config_dir) {
-            Err(error) => {
-                error!("Error while creating config directory: {error}");
-                return Err(());
-            }
-            Ok(_) => trace!("Created config directory {config_dir}"),
-        }
+        fs::create_dir_all(&config_dir)?;
+        trace!("Created config directory {config_dir}");
     }
 
-    return match fs::write(&config_file, serialized_config) {
-        Ok(_) => {
-            trace!("Wrote to file {config_file}");
-            Ok(())
-        }
-        Err(error) => {
-            error!("Error while writing config: {error}");
-            Err(())
-        }
-    };
+    fs::write(&config_file, serialized_config)?;
+    trace!("Wrote to file {config_file}");
+    return Ok(());
 }
 
 /// Attempt to read and deserialize config from file. If an error occurs while deserializing, a default `Config` will be created.<br/>
 /// If `overwrite` is set to false, an `Err(())` will be returned instead.
 #[instrument(skip_all)]
-pub fn read_config_file(overwrite: bool) -> Result<Config, ()> {
+pub fn read_config_file(overwrite: bool) -> Result<Config, Box<dyn Error>> {
     let config_path: String = file_path();
-    return match fs::read(&config_path) {
-        Ok(config_vector) => {
-            debug!("Successfully read config file from {config_path}");
-            verify_config_integrity(config_vector, config_path, overwrite)
-        }
-        Err(error) => {
-            error!("Error while reading config at {config_path}: {error}");
-            Err(())
-        }
-    };
+    let config_vector: Vec<u8> = fs::read(&config_path)?;
+    debug!("Successfully read config file from {config_path}");
+    return verify_config_integrity(config_vector, config_path, overwrite);
 }
 
 /// Deserialize string into `Config`. If an error occurs while deserializing, a default `Config` will be created.
@@ -107,38 +78,23 @@ fn verify_config_integrity(
     config_vector: Vec<u8>,
     config_path: String,
     overwrite: bool,
-) -> Result<Config, ()> {
-    let config_string: String = match String::from_utf8(config_vector) {
-        Err(error) => {
-            error!("Error while converting config to utf8: {error}");
-            return Err(());
-        }
-        Ok(decoded_string) => {
-            trace!("Successfully converted config file to utf8:\n{decoded_string}");
-            decoded_string
-        }
-    };
+) -> Result<Config, Box<dyn Error>> {
+    let config_string: String = String::from_utf8(config_vector)?;
+    trace!("Successfully converted config file to utf8");
 
     return match from_str(&config_string) {
         Err(error) => {
-            warn!("Error while deserializing configuration file: {error}");
-            trace!("Overwrite: {overwrite}");
             if !overwrite {
-                return Err(());
+                return Err(Box::new(error));
             }
-            match fs::remove_file(config_path) {
-                Ok(_) => {
-                    warn!("Removed invalid configuration file, creating new file with defaults");
-                    match write_config(&Config::default()) {
-                        Err(_) => Err(()),
-                        Ok(_) => Ok(Config::default()),
-                    }
-                }
-                Err(error) => {
-                    error!("Error while removing invalid configuration file: {error}");
-                    Err(())
-                }
-            }
+            warn!("Error while deserializing configuration file: {error}");
+
+            fs::remove_file(config_path)?;
+            info!("Removed invalid configuration file, creating new file with defaults");
+
+            let default: Config = Config::default();
+            write_config(&default)?;
+            return Ok(default);
         }
         Ok(config) => {
             trace!("Config file validated");
