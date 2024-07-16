@@ -40,7 +40,7 @@ use prelude::*;
 use std::process::ExitCode;
 use tracing::Level;
 // use tracing_appender::rolling;
-use tracing_subscriber::fmt;
+use tracing_subscriber::{fmt, EnvFilter};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -102,10 +102,15 @@ pub fn log_setup(debug: bool, verbose: bool) -> () {
     }
     // let log_files = rolling::never(dir_path() + "logs/", "ddrpc.log");
 
+    let filter = EnvFilter::new("warn")
+        .add_directive("ddrpc=info".parse().unwrap())
+        .add_directive("rspotify_http=warn".parse().unwrap());
+
     fmt()
         // .with_writer(log_files)
         // .with_ansi(false)
+        .with_env_filter(filter)
         .with_target(false)
-        .with_max_level(Level::INFO)
+        // .with_max_level(Level::INFO)
         .init();
 }

@@ -62,16 +62,22 @@ pub fn add_process(
     config: &mut ProcessesConfig,
     args: CliProcessesAdd,
 ) -> Result<(), Box<dyn Error>> {
-    let trace_data: CliProcessesAdd = args.clone();
     let index: usize = config.processes.len();
+
+    trace!(
+        "Added new process {} to processes list at index {index}",
+        args.name
+    );
+    println!(
+        "Added new process {} to processes list at priority index {index}",
+        args.name
+    );
 
     config.processes.push(ProcessConfig {
         image: args.image,
         name: args.name,
         text: args.text,
     });
-
-    trace!("Added new process {trace_data:?} to processes list at index {index}");
 
     return write_config(config);
 }
