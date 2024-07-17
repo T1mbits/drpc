@@ -1,0 +1,13 @@
+[package]
+name = "ddrpc-daemon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+common = { workspace = true }
+ctrlc = "3.4.4"
+discord-rich-presence = "0.2.3"
+simplelog = "0.12.2"
+sysinfo = "0.30.11"
+serde_cbor = "0.11.2"
