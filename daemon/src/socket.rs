@@ -43,11 +43,6 @@ impl Socket {
                                 "There is already an instance of ddrpc-daemon running"
                             ))
                         }
-                        IpcMessage::Incomplete => {
-                            return Err(anyhow!(
-                                "No message or an incomplete message was sent over the socket"
-                            ))
-                        }
                         _ => {
                             return Err(anyhow!(
                                 "Another program sent an unexpected message over the socket"

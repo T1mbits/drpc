@@ -7,7 +7,7 @@ use std::{
     io::ErrorKind,
     os::unix::net::UnixStream,
     sync::atomic::{AtomicBool, Ordering},
-    thread::{sleep, spawn},
+    thread::{sleep, Builder},
     time::Duration,
 };
 
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         match socket.accept() {
             Err(e) if e.kind() == ErrorKind::WouldBlock => sleep(Duration::from_millis(100)),
             Err(e) => {
-                error!("error accepting unix socket connection: {e}");
+                error!("Error accepting unix socket connection: {e}");
             }
             Ok((s, _)) => parse_message(s),
         }
@@ -44,14 +44,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn parse_message(mut stream: UnixStream) {
-    trace!("parsing");
-    spawn(move || {
-        match read(&mut stream).unwrap() {
-            IpcMessage::Incomplete => error!("Received an incomplete or blank message"),
-            IpcMessage::Kill => kill_daemon(),
-            IpcMessage::Ping => write(IpcMessage::Ping, &mut stream).unwrap(),
-            IpcMessage::Unknown(m) => error!("Received unknown message: {m}"),
-            m => error!("Unimplemented message: {m}"),
-        };
-    });
+    Builder::new()
+        .name("parser".to_string())
+        .spawn(move || {
+            match read(&mut stream).unwrap() {
+                IpcMessage::Kill => kill_daemon(),
+                IpcMessage::Ping => write(IpcMessage::Ping, &mut stream).unwrap(),
+                m => error!("Unimplemented message: {:?}", m),
+            };
+        })
+        .unwrap();
 }
