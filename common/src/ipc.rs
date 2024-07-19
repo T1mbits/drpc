@@ -1,10 +1,9 @@
-use crate::log::*;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use serde_cbor::{from_reader, to_vec};
 use std::{
-    fmt::Display,
-    io::{Read, Write},
+    io::{ErrorKind, Read, Write},
+    net::Shutdown,
     os::unix::net::UnixStream,
 };
 
@@ -17,34 +16,10 @@ pub enum IpcMessage {
     Connect(u64),
     /// Disconnect from the Discord IPC
     Disconnect,
-    /// An incomplete message was sent. This typically means that no response was sent back from the daemon
-    Incomplete,
     /// Kill the daemon
     Kill,
     /// Request for a ping response from the daemon.
     Ping,
-    /// Represents the success of an operation of the daemon. Used for simple confirmations
-    Success(bool),
-    /// Unknown message
-    Unknown(String),
-}
-
-impl Display for IpcMessage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Self::Connect(i) => format!("Connect to Discord IPC with client id: {i}"),
-            Self::Disconnect => "Disconnect from Discord IPC".to_string(),
-            Self::Incomplete => {
-                "Incomplete message. This typically means no message was received".to_string()
-            }
-            Self::Kill => "Kill".to_string(),
-            Self::Ping => "Ping".to_string(),
-            Self::Unknown(r) => format!("Unknown: {r}"),
-            r => format!("Unimplemented: {r}"),
-        };
-
-        write!(f, "{message}")
-    }
 }
 
 /// Write an [`IpcMessage`] to a socket stream
@@ -62,11 +37,33 @@ pub fn read(stream: &mut UnixStream) -> anyhow::Result<IpcMessage> {
     stream.read_to_end(&mut buf)?;
 
     match from_reader(&*buf) {
-        Err(e) if e.is_eof() => Ok(IpcMessage::Incomplete),
-        Err(e) => Err(e.into()),
-        Ok(m) => {
-            trace!("{:#?}", m);
-            Ok(m)
+        Err(e) if e.is_eof() => {
+            if buf.is_empty() {
+                return Err(anyhow!("An empty message was received"));
+            }
+            Err(anyhow!("An incomplete message was received: {:?}", buf))
         }
+        Err(e) => Err(e.into()),
+        Ok(m) => Ok(m),
     }
+}
+
+/// Write a message to the socket and automatically shut down the writing stream and read any message sent back.
+///
+/// # Errors
+/// Returns an error if the socket fails to connect, if an error occurs during [`write`], [`UnixStream`] write shutdown, or [`read`]
+pub fn message(message: IpcMessage) -> anyhow::Result<IpcMessage> {
+    let mut stream = match UnixStream::connect(SOCKET_FILE) {
+        Err(e) if e.kind() == ErrorKind::NotFound => return Err(anyhow!("No daemon was found")),
+        Err(e) if e.kind() == ErrorKind::ConnectionRefused => {
+            return Err(anyhow!("A socket was found, but no daemon responded"))
+        }
+        Err(e) => return Err(e.into()),
+        Ok(s) => s,
+    };
+
+    write(message, &mut stream)?;
+    stream.shutdown(Shutdown::Write)?;
+
+    read(&mut stream)
 }
