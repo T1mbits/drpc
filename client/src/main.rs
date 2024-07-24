@@ -16,7 +16,8 @@ fn main() -> anyhow::Result<()> {
 pub fn parse_command(cli: Ddrpc) -> anyhow::Result<IpcMessage> {
     match cli.subcommands {
         DdrpcSubcommands::Discord(arg) => match arg.subcommands {
-            DdrpcDiscordSubcommands::Connect => message(IpcMessage::Connect(0)),
+            DdrpcDiscordSubcommands::Connect(i) => message(IpcMessage::Connect(i.id)),
+            DdrpcDiscordSubcommands::Disconnect => message(IpcMessage::Disconnect),
             _ => todo!(),
         },
         DdrpcSubcommands::Kill => message(IpcMessage::Kill),

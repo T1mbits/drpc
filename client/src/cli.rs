@@ -37,10 +37,8 @@ pub struct DdrpcDiscord {
 
 #[derive(Debug, Subcommand)]
 pub enum DdrpcDiscordSubcommands {
-    #[command(
-        about = "Start Discord IPC client and set activity. Will start activity update loop"
-    )]
-    Connect,
+    #[command(about = "Start and connect Discord IPC client and set activity")]
+    Connect(DdrpcDiscordConnect),
     #[command(about = "Clear the Discord activity\ntodo")]
     Disconnect,
     #[command(about = "Get Discord activity data")]
@@ -51,6 +49,12 @@ pub enum DdrpcDiscordSubcommands {
         about = "Update Discord activity data (sync app and config file). No longer useful\ntodo"
     )]
     Update,
+}
+
+#[derive(Debug, Args)]
+pub struct DdrpcDiscordConnect {
+    #[arg(help = "The application id of your Discord presence application")]
+    pub id: u64,
 }
 
 #[derive(Debug, Args)]
