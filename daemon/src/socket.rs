@@ -38,16 +38,19 @@ impl Socket {
                     write(IpcMessage::Ping, &mut s)?;
                     s.shutdown(Shutdown::Write)?;
                     match read(&mut s)? {
-                        IpcMessage::Ping => {
-                            return Err(anyhow!(
-                                "There is already an instance of ddrpc-daemon running"
-                            ))
-                        }
-                        _ => {
-                            return Err(anyhow!(
-                                "Another program sent an unexpected message over the socket"
-                            ))
-                        }
+                        Some(msg) => match msg {
+                            IpcMessage::Ping => {
+                                return Err(anyhow!(
+                                    "There is already an instance of ddrpc-daemon running"
+                                ))
+                            }
+                            _ => {
+                                return Err(anyhow!(
+                                    "Another program sent an unexpected message over the socket"
+                                ))
+                            }
+                        },
+                        None => return Err(anyhow!("No message was received from the daemon")),
                     }
                 }
             }
