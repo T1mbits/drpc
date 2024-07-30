@@ -8,6 +8,8 @@ anyhow = "1.0.86"
 common = { workspace = true }
 ctrlc = "3.4.4"
 discord-rich-presence = "0.2.4"
+rspotify = { version = "0.13.2", features = ["cli"] }
 simplelog = "0.12.2"
 sysinfo = "0.30.13"
 serde_cbor = "0.11.2"
+tokio = { version = "1.39.2", features = ["full"] }
