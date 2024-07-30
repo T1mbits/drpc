@@ -1,18 +1,19 @@
 use common::{
-    config::{ActivityTemplate, Config, Template},
+    config::{Config, Template},
     log::*,
+    spotify::get_song_data,
 };
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
+use rspotify::AuthCodePkceSpotify;
 use std::{
-    sync::mpsc::{channel, RecvTimeoutError, Sender},
+    sync::{
+        mpsc::{channel, RecvTimeoutError, Sender},
+        Arc,
+    },
     thread::Builder,
     time::Duration,
 };
-
-pub enum DiscordChannelMessage {
-    Update(ActivityTemplate),
-    Disconnect,
-}
+use tokio::{runtime::Runtime, sync::RwLock};
 
 fn client_init(client_id: u64) -> DiscordIpcClient {
     let mut client = DiscordIpcClient::new(&client_id.to_string())
@@ -23,66 +24,56 @@ fn client_init(client_id: u64) -> DiscordIpcClient {
     client
 }
 
-// TODO change parameter to be full activity data
 pub fn discord_thread(
     id: u64,
-    config: &Config,
-    sender: &mut Option<Sender<DiscordChannelMessage>>,
+    config: Arc<RwLock<Config>>,
+    sender: &mut Option<Sender<()>>,
+    spotify_client: Arc<RwLock<AuthCodePkceSpotify>>,
 ) {
-    if let Some(_) = sender {
-        return error!("A Discord connection already exists.");
+    if sender.is_some() {
+        return error!("Already connected to Discord");
     }
 
     let (send, recv) = channel();
     *sender = Some(send);
-    let config = config.clone();
 
     Builder::new()
         .name("discord".to_string())
         .spawn(move || {
-            let mut activity = config.activity.evaluate();
+            Runtime::new().unwrap().block_on(async {
+                let mut client = client_init(id);
 
-            let mut client = client_init(id);
+                loop {
+                    let config = config.read().await;
+                    let activity = config.activity.evaluate();
 
-            client.set_activity(activity).unwrap();
+                    client.set_activity(activity).unwrap();
 
-            loop {
-                match recv.recv_timeout(Duration::from_secs(1)) {
-                    Err(err) => {
-                        if err == RecvTimeoutError::Disconnected {
-                            panic!("Channel sender dropped");
+                    debug!(
+                        "{}",
+                        get_song_data(spotify_client.clone()).await.unwrap().name
+                    );
+
+                    match recv.recv_timeout(Duration::from_secs(1)) {
+                        Err(err) => {
+                            if err == RecvTimeoutError::Disconnected {
+                                panic!("Channel sender dropped");
+                            }
                         }
-                    }
-                    Ok(msg) => match msg {
-                        DiscordChannelMessage::Disconnect => {
+                        Ok(_) => {
                             client.close().unwrap();
                             break;
                         }
-                        DiscordChannelMessage::Update(template) => {
-                            activity = template.evaluate();
-                            client.set_activity(activity).unwrap();
-                        }
-                    },
+                    }
                 }
-            }
+            })
         })
         .unwrap();
 }
 
-pub fn update_activity(
-    activity: &ActivityTemplate,
-    sender: &Option<Sender<DiscordChannelMessage>>,
-) {
-    if let Some(sender) = sender {
-        if let Err(_) = sender.send(DiscordChannelMessage::Update(activity.clone())) {
-            error!("The Discord thread receiver hung up")
-        }
-    }
-}
-
-pub fn disconnect_discord(sender: &mut Option<Sender<DiscordChannelMessage>>) {
+pub fn disconnect_discord(sender: &mut Option<Sender<()>>) {
     if let Some(send) = sender {
-        if let Err(_) = send.send(DiscordChannelMessage::Disconnect) {
+        if let Err(_) = send.send(()) {
             error!("The Discord thread receiver hung up");
         }
         *sender = None;

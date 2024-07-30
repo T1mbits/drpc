@@ -16,6 +16,7 @@ pub trait Template<'a, A> {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Config {
+    #[serde(default)]
     pub activity: ActivityTemplate,
     // pub processes: ProcessesConfig,
 }
@@ -221,12 +222,4 @@ pub struct ProcessConfig {
     pub image: String,
     pub name: String,
     pub text: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct SpotifyConfig {
-    pub client_id: String,
-    pub client_secret: String,
-    // pub fallback: SpotifyFallbackConfig,
-    pub refresh_token: String,
 }

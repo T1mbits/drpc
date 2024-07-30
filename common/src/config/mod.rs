@@ -65,15 +65,15 @@ pub fn empty_config(config: &mut Config) {
     empty_template(&mut config.activity)
 }
 
+fn empty_string(value: &mut Option<String>) {
+    if value.as_ref().map_or(false, |s| s.is_empty()) {
+        *value = None;
+    }
+}
+
 /// Convert all empty strings and templates to None.
 pub fn empty_template(activity: &mut ActivityTemplate) -> () {
-    fn empty_string_to_none(value: &mut Option<String>) {
-        if value.as_ref().map_or(false, |s| s.is_empty()) {
-            *value = None;
-        }
-    }
-
-    activity.foreach_field(empty_string_to_none);
+    activity.foreach_field(empty_string);
 
     if let Some(assets) = &activity.assets {
         if assets.is_empty() {

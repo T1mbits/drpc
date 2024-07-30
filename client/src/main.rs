@@ -2,51 +2,52 @@ mod cli;
 
 use clap::Parser;
 use cli::*;
-use common::{
-    config::{empty_template, get_config, write_config, ActivityTemplate, Config},
-    ipc::*,
-    log::*,
-};
+use common::{config::*, ipc::*, log::*, spotify::authenticate_pkce};
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     log_init(LevelFilter::Trace);
     let cli = Cli::parse();
     let mut config = get_config(cli.config_overwrite)?;
 
     match cli.subcommand {
         Ddrpc::Connect { id } => {
-            message(IpcMessage::Activity(config.activity.clone()))?;
-            message(IpcMessage::Connect(id))?
+            message(IpcMessage::Activity(config.activity.clone())).await?;
+            message(IpcMessage::Connect(id)).await?
         }
-        Ddrpc::Disconnect => message(IpcMessage::Disconnect)?,
+        Ddrpc::Disconnect => message(IpcMessage::Disconnect).await?,
         Ddrpc::Get { subcommand } => match subcommand {
             DdrpcGet::Activity => {
                 println!("{}", config.activity);
                 None
             }
-            _ => todo!(),
+            DdrpcGet::Processes { subcommand: _ } => todo!(),
         },
-        Ddrpc::Kill => message(IpcMessage::Kill)?,
+        Ddrpc::Kill => message(IpcMessage::Kill).await?,
         Ddrpc::Set { subcommand } => match subcommand {
             DdrpcSet::Activity(activity) => {
                 discord_set(&mut config.activity, activity);
                 None
             }
-            _ => todo!(),
+            DdrpcSet::Processes { subcommand: _ } => todo!(),
+            DdrpcSet::Spotify => {
+                authenticate_pkce().await?;
+                None
+            }
         },
-        Ddrpc::Sync(sync) => sync_config(&config, sync)?,
+        Ddrpc::Sync(sync) => sync_config(&config, sync).await?,
     };
 
     write_config(&config)
 }
 
-fn discord_set(activity: &mut ActivityTemplate, set: DdrpcSetActivity) {
-    fn set_option(target: &mut Option<String>, source: Option<String>) {
-        if let Some(string) = source {
-            *target = Some(string)
-        }
+fn set_option(target: &mut Option<String>, source: Option<String>) {
+    if let Some(string) = source {
+        *target = Some(string)
     }
+}
 
+fn discord_set(activity: &mut ActivityTemplate, set: DdrpcSetActivity) {
     let mut assets = activity.assets.clone().unwrap_or_default();
     let mut buttons = activity.buttons.clone().unwrap_or_default();
 
@@ -66,22 +67,18 @@ fn discord_set(activity: &mut ActivityTemplate, set: DdrpcSetActivity) {
     empty_template(activity);
 }
 
-fn sync_config(config: &Config, sync: DdrpcSync) -> anyhow::Result<Option<IpcMessage>> {
+async fn sync_config(config: &Config, sync: DdrpcSync) -> anyhow::Result<Option<IpcMessage>> {
     if sync.no_flags() {
-        message(IpcMessage::Activity(config.activity.clone()))?;
+        message(IpcMessage::Activity(config.activity.clone())).await?;
         // message(IpcMessage::Processes(config.processes.clone()))?;
-        // message(IpcMessage::Spotify(config.spotify.clone()))?;
         return Ok(None);
     }
 
     if sync.activity {
-        message(IpcMessage::Activity(config.activity.clone()))?;
+        message(IpcMessage::Activity(config.activity.clone())).await?;
     }
     // if sync.processes {
     //     message(IpcMessage::Processes(config.processes.clone()))?;
-    // }
-    // if sync.spotify {
-    //     message(IpcMessage::Spotify(config.spotify.clone()))?;
     // }
 
     Ok(None)

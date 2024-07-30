@@ -54,8 +54,6 @@ pub enum DdrpcGet {
         #[command(subcommand)]
         subcommand: DdrpcGetProcesses,
     },
-    #[command(about = "Show Spotify client configuration")]
-    Spotify,
 }
 
 #[derive(Debug, Subcommand)]
@@ -75,14 +73,8 @@ pub enum DdrpcSet {
         #[command(subcommand)]
         subcommand: DdrpcSetProcesses,
     },
-    #[command(about = "Set the Spotify client id and secret")]
-    #[group(required = true)]
-    Spotify {
-        #[arg(long, group = "test")]
-        client_id: Option<String>,
-        #[arg(long, group = "test")]
-        client_secret: Option<String>,
-    },
+    #[command(about = "Authenticate the Spotify client")]
+    Spotify,
 }
 
 #[derive(Debug, Args)]
@@ -123,10 +115,10 @@ pub enum DdrpcSetProcesses {
     },
     #[command(about = "Change the order of which processes are detected first")]
     Order {
-        #[arg()]
+        #[arg(help = "The name of the process being reordered")]
         name: String,
         #[command(flatten)]
-        test: DdrpcSetProcessesOrder,
+        flags: DdrpcSetProcessesOrder,
     },
     #[command(about = "Remove a target process")]
     Remove {
@@ -144,6 +136,15 @@ pub struct DdrpcSetProcessesOrder {
     pub increase: bool,
     #[arg(short = 's', long, help = "Set the order of the process")]
     pub set: Option<u32>,
+}
+
+#[derive(Debug, Args)]
+#[group(multiple = true, required = true)]
+pub struct DdrpcSetSpotifyCredentials {
+    #[arg(long, short = 'c', help = "Set your Spotify application client id")]
+    pub client_id: Option<String>,
+    #[arg(long, short = 's', help = "Set your Spotify application client secret")]
+    pub client_secret: Option<String>,
 }
 
 #[derive(Debug, Args)]

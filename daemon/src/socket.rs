@@ -3,9 +3,11 @@ use common::{ipc::*, log::*};
 use std::{
     fs,
     io::{self, ErrorKind},
-    net::Shutdown,
-    os::unix::net::{SocketAddr, UnixListener, UnixStream},
     path::Path,
+};
+use tokio::{
+    io::AsyncWriteExt,
+    net::{unix::SocketAddr, UnixListener, UnixStream},
 };
 
 /// A wrapper for a Unix domain socket that removes its socket file when dropped
@@ -23,21 +25,22 @@ impl Drop for Socket {
 }
 
 impl Socket {
-    pub fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> anyhow::Result<Self> {
         if Path::new(SOCKET_FILE).exists() {
             trace!("found existing socket file, attempting to connect");
 
-            match UnixStream::connect(SOCKET_FILE) {
-                Err(e) if e.kind() == ErrorKind::ConnectionRefused => {
+            match UnixStream::connect(SOCKET_FILE).await {
+                Err(err) if err.kind() == ErrorKind::ConnectionRefused => {
                     fs::remove_file(SOCKET_FILE)
-                        .context(format!("Failed to remove old socket file: {e}"))?;
+                        .context(format!("Failed to remove old socket file: {err}"))?;
                     warn!("Removed old socket file");
                 }
-                Err(e) => return Err(anyhow!("Failed to access old socket file: {e}")),
-                Ok(mut s) => {
-                    write(IpcMessage::Ping, &mut s)?;
-                    s.shutdown(Shutdown::Write)?;
-                    match read(&mut s)? {
+                Err(err) => return Err(anyhow!("Failed to access old socket file: {err}")),
+                Ok(mut stream) => {
+                    write(IpcMessage::Ping, &mut stream).await?;
+                    stream.shutdown().await?;
+
+                    match read(&mut stream).await? {
                         Some(msg) => match msg {
                             IpcMessage::Ping => {
                                 return Err(anyhow!(
@@ -57,12 +60,11 @@ impl Socket {
         }
 
         let socket = UnixListener::bind(SOCKET_FILE).context("Could not create unix socket")?;
-        socket.set_nonblocking(true)?;
 
         Ok(Self { socket })
     }
 
-    pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
-        Ok(self.socket.accept()?)
+    pub async fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
+        Ok(self.socket.accept().await?)
     }
 }
