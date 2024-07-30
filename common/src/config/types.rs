@@ -1,3 +1,4 @@
+use crate::as_string;
 use discord_rich_presence::activity::{Activity, Assets, Button};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -13,44 +14,10 @@ pub trait Template<'a, A> {
     fn is_empty(&self) -> bool;
 }
 
-/// Display an Option\<T> as either its display value or \<None>.
-fn as_string<T>(value: &Option<T>) -> String
-where
-    T: Display,
-{
-    match value {
-        Some(val) => val.to_string(),
-        None => "<None>".to_string(),
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     pub activity: ActivityTemplate,
     // pub processes: ProcessesConfig,
-    // pub spotify: SpotifyConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            activity: ActivityTemplate::default(),
-            // processes: ProcessesConfig {
-            //     idle_image: "idle".to_string(),
-            //     idle_text: "Idle".to_string(),
-            //     processes: vec![ProcessConfig {
-            //         image: "code".to_string(),
-            //         name: "code".to_string(),
-            //         text: "Visual Studio Code".to_string(),
-            //     }],
-            // },
-            // spotify: SpotifyConfig {
-            //     client_id: String::new(),
-            //     client_secret: String::new(),
-            //     refresh_token: String::new(),
-            // },
-        }
-    }
 }
 
 /// A struct closely mirroring [`discord_rich_presence::activity::Activity`], but can be both serialized and deserialized for storage in a config file.
