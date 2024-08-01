@@ -34,6 +34,7 @@ fn kill_daemon() -> () {
 async fn main() -> anyhow::Result<()> {
     ctrlc::set_handler(|| kill_daemon()).context("Error setting up ctrlc handler")?;
     log_init(LevelFilter::Trace);
+
     let socket = Socket::new().await?;
     let config = Arc::new(RwLock::new(match get_config(false) {
         Err(e) => {
@@ -43,9 +44,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Ok(c) => c,
     }));
-
     let discord_sender: Arc<RwLock<Option<Sender<()>>>> = Arc::new(RwLock::new(None));
-
     let spotify_client = Arc::new(RwLock::new(try_authentication_from_cache().await.unwrap()));
 
     while daemon_running() {
@@ -65,15 +64,10 @@ async fn main() -> anyhow::Result<()> {
                 match read(&mut stream).await.unwrap() {
                     Some(msg) => match msg {
                         IpcMessage::Activity(activity) => config.write().await.activity = activity,
-                        IpcMessage::Connect(id) => discord_thread(
-                            id,
-                            config,
-                            &mut *discord_sender.write().await,
-                            spotify_client,
-                        ),
-                        IpcMessage::Disconnect => {
-                            disconnect_discord(&mut *discord_sender.write().await)
+                        IpcMessage::Connect(id) => {
+                            discord_thread(id, config, discord_sender, spotify_client).await
                         }
+                        IpcMessage::Disconnect => disconnect_discord(discord_sender).await,
                         IpcMessage::Kill => kill_daemon(),
                         IpcMessage::Ping => write(IpcMessage::Ping, &mut stream).await.unwrap(),
                         _ => todo!(),
@@ -83,8 +77,9 @@ async fn main() -> anyhow::Result<()> {
             });
         }
     }
+
     drop(socket);
-    disconnect_discord(&mut *discord_sender.write().await);
+    disconnect_discord(discord_sender).await;
 
     info!("Exiting...");
     Ok(())

@@ -1,7 +1,7 @@
 use crate::config::{ActivityTemplate, ProcessesConfig};
 use anyhow::{anyhow, Context};
+use ciborium::{de::Error, from_reader, into_writer};
 use serde::{Deserialize, Serialize};
-use serde_cbor::{from_reader, to_vec};
 use std::io::ErrorKind;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -29,8 +29,10 @@ pub enum IpcMessage {
 
 /// Write an [`IpcMessage`] to a socket stream
 pub async fn write(message: IpcMessage, stream: &mut UnixStream) -> anyhow::Result<()> {
+    let mut buffer = Vec::new();
+    into_writer(&message, &mut buffer).context("failed to serialize message into CBOR")?;
     stream
-        .write(&to_vec(&message).context("failed to serialize message into CBOR")?)
+        .write(&buffer)
         .await
         .context("failed to write message to unix socket")?;
     Ok(())
@@ -42,14 +44,16 @@ pub async fn read(stream: &mut UnixStream) -> anyhow::Result<Option<IpcMessage>>
     stream.read_to_end(&mut buf).await?;
 
     match from_reader(&*buf) {
-        Err(e) if e.is_eof() => {
-            if buf.is_empty() {
-                return Ok(None);
+        Err(err) => match err {
+            Error::Io(err) if err.kind() == ErrorKind::UnexpectedEof => {
+                if buf.is_empty() {
+                    return Ok(None);
+                }
+                Err(err.into())
             }
-            Err(anyhow!("An incomplete message was received: {:?}", buf))
-        }
-        Err(e) => Err(e.into()),
-        Ok(m) => Ok(m),
+            err => Err(err.into()),
+        },
+        Ok(msg) => Ok(msg),
     }
 }
 

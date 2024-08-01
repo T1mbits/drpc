@@ -24,18 +24,18 @@ fn client_init(client_id: u64) -> DiscordIpcClient {
     client
 }
 
-pub fn discord_thread(
+pub async fn discord_thread(
     id: u64,
     config: Arc<RwLock<Config>>,
-    sender: &mut Option<Sender<()>>,
+    sender: Arc<RwLock<Option<Sender<()>>>>,
     spotify_client: Arc<RwLock<AuthCodePkceSpotify>>,
 ) {
-    if sender.is_some() {
+    if sender.read().await.is_some() {
         return error!("Already connected to Discord");
     }
 
     let (send, recv) = channel();
-    *sender = Some(send);
+    *sender.write().await = Some(send);
 
     Builder::new()
         .name("discord".to_string())
@@ -71,11 +71,13 @@ pub fn discord_thread(
         .unwrap();
 }
 
-pub fn disconnect_discord(sender: &mut Option<Sender<()>>) {
-    if let Some(send) = sender {
+pub async fn disconnect_discord(sender: Arc<RwLock<Option<Sender<()>>>>) {
+    let sender_guard = sender.read().await;
+    if let Some(send) = sender_guard.as_ref() {
         if let Err(_) = send.send(()) {
             error!("The Discord thread receiver hung up");
         }
-        *sender = None;
+        drop(sender_guard);
+        *sender.write().await = None;
     }
 }

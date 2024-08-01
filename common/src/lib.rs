@@ -1,5 +1,4 @@
 pub mod config;
-pub mod discord;
 pub mod ipc;
 pub mod spotify;
 
