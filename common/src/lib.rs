@@ -1,6 +1,5 @@
 pub mod config;
 pub mod ipc;
-pub mod spotify;
 
 pub mod log {
     pub use log::{debug, error, info, trace, warn};

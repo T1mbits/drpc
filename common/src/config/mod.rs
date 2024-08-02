@@ -1,7 +1,7 @@
 mod types;
 
 use anyhow::Context;
-use dirs::config_dir;
+use dirs::{cache_dir, config_dir};
 use std::{fs, path::PathBuf};
 use toml::{from_str, to_string};
 pub use types::*;
@@ -15,6 +15,17 @@ fn config_path() -> PathBuf {
 
 fn config_file() -> PathBuf {
     config_path().join("ddrpc.toml")
+}
+
+pub fn cache_path() -> PathBuf {
+    match cache_dir() {
+        None => PathBuf::from("./ddrpc"),
+        Some(dir) => dir.join("ddrpc"),
+    }
+}
+
+pub fn cache_file() -> PathBuf {
+    cache_path().join("ddrpc_spotify_token.json")
 }
 
 pub fn write_config(config: &Config) -> anyhow::Result<()> {

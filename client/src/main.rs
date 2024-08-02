@@ -2,7 +2,7 @@ mod cli;
 
 use clap::Parser;
 use cli::*;
-use common::{config::*, ipc::*, log::*, spotify::authenticate_pkce};
+use common::{config::*, ipc::*, log::*};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -30,10 +30,6 @@ async fn main() -> anyhow::Result<()> {
                 None
             }
             DdrpcSet::Processes { subcommand: _ } => todo!(),
-            DdrpcSet::Spotify => {
-                authenticate_pkce().await?;
-                None
-            }
         },
         Ddrpc::Sync(sync) => sync_config(&config, sync).await?,
     };

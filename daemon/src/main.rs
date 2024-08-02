@@ -1,15 +1,17 @@
 mod discord;
 mod socket;
+mod spotify;
+mod template;
 
 use anyhow::Context;
 use common::{
     config::{get_config, Config},
     ipc::*,
     log::*,
-    spotify::try_authentication_from_cache,
 };
 use discord::{disconnect_discord, discord_thread};
 use socket::Socket;
+use spotify::authenticate_pkce;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -45,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
         Ok(c) => c,
     }));
     let discord_sender: Arc<RwLock<Option<Sender<()>>>> = Arc::new(RwLock::new(None));
-    let spotify_client = Arc::new(RwLock::new(try_authentication_from_cache().await.unwrap()));
+    let spotify_client = Arc::new(RwLock::new(authenticate_pkce().await.unwrap()));
 
     while daemon_running() {
         if let Ok(result) = timeout(Duration::from_millis(100), socket.accept()).await {
@@ -62,16 +64,20 @@ async fn main() -> anyhow::Result<()> {
 
             spawn(async move {
                 match read(&mut stream).await.unwrap() {
-                    Some(msg) => match msg {
-                        IpcMessage::Activity(activity) => config.write().await.activity = activity,
-                        IpcMessage::Connect(id) => {
-                            discord_thread(id, config, discord_sender, spotify_client).await
-                        }
-                        IpcMessage::Disconnect => disconnect_discord(discord_sender).await,
-                        IpcMessage::Kill => kill_daemon(),
-                        IpcMessage::Ping => write(IpcMessage::Ping, &mut stream).await.unwrap(),
-                        _ => todo!(),
-                    },
+                    Some(msg) => {
+                        match msg {
+                            IpcMessage::Activity(activity) => {
+                                config.write().await.activity = activity
+                            }
+                            IpcMessage::Connect(id) => {
+                                discord_thread(id, config, discord_sender, spotify_client).await
+                            }
+                            IpcMessage::Disconnect => disconnect_discord(discord_sender).await,
+                            IpcMessage::Kill => kill_daemon(),
+                            IpcMessage::Ping => write(IpcMessage::Ping, &mut stream).await.unwrap(),
+                            _ => todo!(),
+                        };
+                    }
                     None => error!("An empty message was received"),
                 }
             });

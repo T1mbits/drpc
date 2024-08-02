@@ -73,8 +73,6 @@ pub enum DdrpcSet {
         #[command(subcommand)]
         subcommand: DdrpcSetProcesses,
     },
-    #[command(about = "Authenticate the Spotify client")]
-    Spotify,
 }
 
 #[derive(Debug, Args)]

@@ -1,7 +1,7 @@
+use crate::spotify::get_song_data;
 use common::{
     config::{Config, Template},
     log::*,
-    spotify::get_song_data,
 };
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use rspotify::AuthCodePkceSpotify;
@@ -20,6 +20,7 @@ fn client_init(client_id: u64) -> DiscordIpcClient {
         .expect("a new DiscordIpcClient should always be able to be created. Not quite sure why this even returns an error");
 
     client.connect().unwrap();
+    info!("Successfully connected to Discord IPC");
 
     client
 }
@@ -49,10 +50,13 @@ pub async fn discord_thread(
 
                     client.set_activity(activity).unwrap();
 
-                    debug!(
-                        "{}",
-                        get_song_data(spotify_client.clone()).await.unwrap().name
-                    );
+                    // debug!(
+                    //     "{}",
+                    //     match get_song_data(spotify_client.clone()).await {
+                    //         None => "No song playing".to_string(),
+                    //         Some(track) => track.name,
+                    //     }
+                    // );
 
                     match recv.recv_timeout(Duration::from_secs(1)) {
                         Err(err) => {
